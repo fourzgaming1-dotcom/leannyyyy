@@ -30,6 +30,26 @@ export interface UserWallet {
   createdAt: string;
   updatedAt: string;
   transactions: Transaction[];
+  purchasedGroups?: string[];
+}
+
+export interface GroupItem {
+  id: string;
+  name: string;
+  price: number;
+  currency: string;
+  description: string;
+  tag?: string;
+  isPurchased?: boolean;
+  inviteLink?: string;
+}
+
+export interface GroupPurchaseResponse {
+  success: boolean;
+  group: GroupItem;
+  inviteLink: string;
+  wallet: UserWallet;
+  message: string;
 }
 
 export interface ServerConfig {

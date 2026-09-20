@@ -1,13 +1,14 @@
 import React, { useState } from "react";
 import { ServerConfig, TelegramUser } from "../types";
 import { api } from "../services/api";
-import { X, CreditCard, Sparkles, Shield, AlertCircle, Loader2 } from "lucide-react";
+import { X, CreditCard, Sparkles, Shield, AlertCircle, Loader2, ExternalLink } from "lucide-react";
 
 interface DepositModalProps {
   isOpen: boolean;
   onClose: () => void;
   user: TelegramUser;
   config: ServerConfig | null;
+  initialAmount?: number;
   onDepositSuccess: (amount: number, currency: string, txId?: string) => void;
   openUrl: (url: string) => void;
   triggerHaptic: (type: "light" | "medium" | "heavy" | "success" | "warning" | "error") => void;
@@ -21,16 +22,24 @@ export const DepositModal: React.FC<DepositModalProps> = ({
   onClose,
   user,
   config,
+  initialAmount = 20,
   onDepositSuccess,
   openUrl,
   triggerHaptic,
 }) => {
-  const [selectedAmount, setSelectedAmount] = useState<number>(20);
+  const [selectedAmount, setSelectedAmount] = useState<number>(initialAmount);
   const [customAmount, setCustomAmount] = useState<string>("");
+
+  React.useEffect(() => {
+    if (initialAmount && isOpen) {
+      setSelectedAmount(initialAmount);
+      setCustomAmount("");
+    }
+  }, [initialAmount, isOpen]);
   const [selectedCurrency, setSelectedCurrency] = useState<string>("GBP");
   const [isProcessingStripe, setIsProcessingStripe] = useState<boolean>(false);
-  const [isInstantTesting, setIsInstantTesting] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
@@ -42,6 +51,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
     setSelectedAmount(amt);
     setCustomAmount("");
     setErrorMessage(null);
+    setCheckoutUrl(null);
   };
 
   const handleCustomChange = (val: string) => {
@@ -49,6 +59,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
       setCustomAmount(val);
       setSelectedAmount(0);
       setErrorMessage(null);
+      setCheckoutUrl(null);
     }
   };
 
@@ -73,53 +84,21 @@ export const DepositModal: React.FC<DepositModalProps> = ({
       });
 
       if (res.checkoutUrl) {
-        if (res.simulated) {
-          // If simulated, verify directly to demonstrate instant balance update immediately!
-          const verifyRes = await api.verifySession(
-            res.sessionId || `mock_${Date.now()}`,
-            user.id,
-            activeAmount,
-            selectedCurrency
-          );
-          triggerHaptic("success");
-          onDepositSuccess(activeAmount, selectedCurrency, verifyRes.transaction?.id);
-          onClose();
-        } else {
-          // Real Stripe Checkout URL
-          triggerHaptic("light");
-          openUrl(res.checkoutUrl);
-          onClose();
-        }
+        setCheckoutUrl(res.checkoutUrl);
+        triggerHaptic("light");
+        openUrl(res.checkoutUrl);
+      } else {
+        throw new Error("No checkout URL returned from Stripe");
       }
     } catch (err: any) {
       console.error("Checkout session error:", err);
-      setErrorMessage(err.message || "Failed to initialize Stripe checkout");
+      setErrorMessage(
+        err.message ||
+          "Stripe checkout could not be initiated. Please check that STRIPE_SECRET_KEY is configured on your server."
+      );
       triggerHaptic("error");
     } finally {
       setIsProcessingStripe(false);
-    }
-  };
-
-  const handleInstantTestDeposit = async () => {
-    if (activeAmount < 1) {
-      setErrorMessage(`Minimum deposit is ${currencySymbol}1.00`);
-      return;
-    }
-
-    try {
-      setIsInstantTesting(true);
-      setErrorMessage(null);
-      triggerHaptic("medium");
-
-      const res = await api.testDeposit(user.id, activeAmount, selectedCurrency);
-      triggerHaptic("success");
-      onDepositSuccess(activeAmount, selectedCurrency, res.transaction.id);
-      onClose();
-    } catch (err: any) {
-      setErrorMessage("Test deposit failed. Please try again.");
-      triggerHaptic("error");
-    } finally {
-      setIsInstantTesting(false);
     }
   };
 
@@ -261,48 +240,55 @@ export const DepositModal: React.FC<DepositModalProps> = ({
 
         {/* Action Buttons */}
         <div className="space-y-2.5 pt-3 border-t border-pink-500/20 relative z-10">
+          {checkoutUrl && (
+            <div className="p-3.5 rounded-2xl bg-emerald-950/70 border border-emerald-500/40 text-center space-y-2 animate-in fade-in duration-200 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+              <div className="flex items-center justify-center gap-1.5 text-xs text-emerald-300 font-bold">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Stripe Session Ready ({currencySymbol}{activeAmount.toFixed(2)})</span>
+              </div>
+              <a
+                id="btn-open-stripe-tab"
+                href={checkoutUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => triggerHaptic("light")}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-black text-xs shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all cursor-pointer"
+              >
+                <ExternalLink className="w-4 h-4" />
+                <span>Open Stripe Checkout Tab ↗</span>
+              </a>
+              <p className="text-[10px] text-emerald-300/70">
+                Tap above if your browser blocked the automatic payment window
+              </p>
+            </div>
+          )}
+
           {/* Main Stripe Button */}
           <button
             id="btn-stripe-checkout-confirm"
             type="button"
-            disabled={isProcessingStripe || isInstantTesting || activeAmount < 1}
+            disabled={isProcessingStripe || activeAmount < 1}
             onClick={handleStripeCheckout}
             className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-gradient-to-r from-pink-500 via-rose-500 to-fuchsia-600 hover:from-pink-400 hover:via-rose-400 hover:to-fuchsia-500 disabled:opacity-50 text-white font-extrabold text-sm shadow-[0_0_25px_rgba(255,46,147,0.4)] active:scale-[0.98] transition-all cursor-pointer"
           >
             {isProcessingStripe ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin text-white" />
-                <span>Opening Stripe Checkout...</span>
+                <span>Connecting to Stripe Checkout...</span>
               </>
             ) : (
               <>
                 <CreditCard className="w-4 h-4 text-white drop-shadow-[0_0_4px_rgba(255,255,255,0.8)]" />
                 <span>
-                  Deposit {currencySymbol}{activeAmount.toFixed(2)} via Stripe
+                  Proceed to Stripe Payment ({currencySymbol}{activeAmount.toFixed(2)})
                 </span>
               </>
             )}
           </button>
 
-          {/* Instant Sandbox / Simulation button */}
-          <button
-            id="btn-test-instant-credit"
-            type="button"
-            disabled={isProcessingStripe || isInstantTesting || activeAmount < 1}
-            onClick={handleInstantTestDeposit}
-            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-black/80 hover:bg-pink-950/60 border border-pink-500/40 text-xs font-bold text-pink-200 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 shadow-[0_2px_10px_rgba(0,0,0,0.3)]"
-          >
-            {isInstantTesting ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-pink-400" />
-            ) : (
-              <Sparkles className="w-3.5 h-3.5 text-pink-400" />
-            )}
-            <span>Instant Sandbox Credit ({currencySymbol}{activeAmount.toFixed(2)})</span>
-          </button>
-
-          <p className="text-center text-[11px] text-pink-300/50 pt-1 flex items-center justify-center gap-1">
-            <Shield className="w-3 h-3 text-pink-400/60" />
-            Encrypted Stripe Checkout with Instant SSE Webhook Push
+          <p className="text-center text-[11px] text-pink-300/60 pt-1 flex items-center justify-center gap-1.5">
+            <Shield className="w-3.5 h-3.5 text-pink-400" />
+            Official Stripe Checkout • Card, Apple Pay & Google Pay
           </p>
         </div>
       </div>

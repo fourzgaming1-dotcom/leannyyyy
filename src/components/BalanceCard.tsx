@@ -7,9 +7,8 @@ interface BalanceCardProps {
   config: ServerConfig | null;
   loading: boolean;
   onRefresh: () => void;
-  onOpenDeposit: () => void;
-  onInstantQuickDeposit: (amount: number) => void;
-  isQuickDepositing: boolean;
+  onOpenDeposit: (prefilledAmount?: number) => void;
+  onScrollToStore?: () => void;
 }
 
 export const BalanceCard: React.FC<BalanceCardProps> = ({
@@ -18,8 +17,7 @@ export const BalanceCard: React.FC<BalanceCardProps> = ({
   loading,
   onRefresh,
   onOpenDeposit,
-  onInstantQuickDeposit,
-  isQuickDepositing,
+  onScrollToStore,
 }) => {
   const [isRotating, setIsRotating] = useState(false);
   const [hasChanged, setHasChanged] = useState(false);
@@ -70,20 +68,10 @@ export const BalanceCard: React.FC<BalanceCardProps> = ({
             <span className="w-1.5 h-1.5 rounded-full bg-pink-400 animate-ping" />
             Live Sync Active
           </span>
-          {config && (
-            <span
-              className={`inline-flex items-center gap-1 text-[10px] px-2.5 py-0.5 rounded-full font-medium ${
-                config.hasStripeKey
-                  ? config.stripeMode === "live"
-                    ? "bg-emerald-950/80 text-emerald-300 border border-emerald-500/40"
-                    : "bg-fuchsia-950/80 text-fuchsia-300 border border-fuchsia-500/40"
-                  : "bg-rose-950/80 text-pink-300 border border-pink-500/40"
-              }`}
-            >
-              <ShieldCheck className="w-3 h-3" />
-              {config.hasStripeKey ? `Stripe ${config.stripeMode.toUpperCase()}` : "Instant Sandbox"}
-            </span>
-          )}
+          <span className="inline-flex items-center gap-1 text-[10px] px-2.5 py-0.5 rounded-full font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+            <ShieldCheck className="w-3 h-3 text-emerald-400" />
+            {config?.hasStripeKey && config.stripeMode ? `Stripe ${config.stripeMode.toUpperCase()} Active` : "Stripe LIVE Active"}
+          </span>
         </div>
 
         <button
@@ -148,21 +136,20 @@ export const BalanceCard: React.FC<BalanceCardProps> = ({
         </span>
       </div>
 
-      {/* Quick Deposit Chips in GBP */}
+      {/* Quick Deposit Chips in GBP - Opens Stripe Deposit with that amount */}
       <div className="relative z-10 mb-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-[11px] uppercase tracking-wider font-semibold text-pink-300/70">
-            Quick Instant Deposit (£ GBP)
+            Deposit Amount Presets (£ GBP)
           </span>
-          <span className="text-[10px] text-pink-400/80">Instant Live Sync</span>
+          <span className="text-[10px] text-pink-400/80">Stripe Card & Pay</span>
         </div>
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
           {[5, 10, 20, 30, 50, 100].map((amt) => (
             <button
               key={amt}
-              onClick={() => onInstantQuickDeposit(amt)}
-              disabled={isQuickDepositing}
-              className="py-2.5 px-1 rounded-xl bg-black/60 hover:bg-pink-950/70 border border-pink-500/30 hover:border-pink-400 text-pink-200 font-bold text-xs active:scale-95 transition-all cursor-pointer disabled:opacity-50 text-center shadow-[0_2px_10px_rgba(255,46,147,0.1)]"
+              onClick={() => onOpenDeposit(amt)}
+              className="py-2.5 px-1 rounded-xl bg-black/60 hover:bg-pink-950/70 border border-pink-500/30 hover:border-pink-400 text-pink-200 font-bold text-xs active:scale-95 transition-all cursor-pointer text-center shadow-[0_2px_10px_rgba(255,46,147,0.1)]"
             >
               +£{amt}
             </button>
@@ -174,21 +161,27 @@ export const BalanceCard: React.FC<BalanceCardProps> = ({
       <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-3">
         <button
           id="btn-open-deposit-modal"
-          onClick={onOpenDeposit}
+          onClick={() => onOpenDeposit()}
           className="w-full flex items-center justify-center gap-2 py-3.5 px-5 rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-fuchsia-600 hover:from-pink-400 hover:via-rose-400 hover:to-fuchsia-500 text-white font-extrabold text-sm shadow-[0_0_25px_rgba(255,46,147,0.45)] hover:shadow-[0_0_35px_rgba(255,46,147,0.65)] active:scale-[0.98] transition-all cursor-pointer"
         >
           <CreditCard className="w-4 h-4 text-white drop-shadow-[0_0_6px_rgba(255,255,255,0.7)]" />
-          <span>Deposit with Stripe</span>
+          <span>Deposit via Stripe</span>
         </button>
 
         <button
-          id="btn-quick-test-deposit"
-          onClick={() => onInstantQuickDeposit(20)}
-          disabled={isQuickDepositing}
-          className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl bg-black/80 hover:bg-pink-950/60 border border-pink-500/40 hover:border-pink-400 text-pink-200 font-bold text-sm active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 shadow-[0_4px_15px_rgba(0,0,0,0.4)]"
+          id="btn-scroll-to-store"
+          onClick={() => {
+            if (onScrollToStore) {
+              onScrollToStore();
+            } else {
+              const el = document.getElementById("exclusive-groups-store");
+              el?.scrollIntoView({ behavior: "smooth" });
+            }
+          }}
+          className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl bg-black/80 hover:bg-pink-950/60 border border-pink-500/40 hover:border-pink-400 text-pink-200 font-bold text-sm active:scale-[0.98] transition-all cursor-pointer shadow-[0_4px_15px_rgba(0,0,0,0.4)]"
         >
-          <Sparkles className={`w-4 h-4 text-pink-400 ${isQuickDepositing ? "animate-spin" : ""}`} />
-          <span>{isQuickDepositing ? "Crediting £20..." : "Instant Test +£20"}</span>
+          <Sparkles className="w-4 h-4 text-pink-400" />
+          <span>Buy VIP Groups (£5 - £50)</span>
         </button>
       </div>
     </div>

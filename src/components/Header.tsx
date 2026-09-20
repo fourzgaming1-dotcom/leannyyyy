@@ -96,7 +96,7 @@ export const Header: React.FC<HeaderProps> = ({
                   <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
                   <div className="absolute right-0 mt-1.5 w-56 bg-[#0c0214] border border-pink-500/40 rounded-2xl shadow-2xl py-1 z-50 text-xs divide-y divide-pink-950">
                     <div className="px-3 py-2 text-[11px] font-semibold text-pink-300/70 uppercase tracking-wider">
-                      Simulate Telegram User
+                      Active Telegram Profile
                     </div>
                     {DEMO_USERS.map((demo) => (
                       <button

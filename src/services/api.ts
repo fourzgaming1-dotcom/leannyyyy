@@ -1,4 +1,4 @@
-import { UserWallet, ServerConfig, CheckoutSessionResponse, Transaction } from "../types";
+import { UserWallet, ServerConfig, CheckoutSessionResponse, Transaction, GroupItem, GroupPurchaseResponse } from "../types";
 
 export const api = {
   async getConfig(): Promise<ServerConfig> {
@@ -17,12 +17,45 @@ export const api = {
     return res.json();
   },
 
+  async getGroups(telegramId: number): Promise<{ groups: GroupItem[]; purchasedCount: number }> {
+    const res = await fetch(`/api/groups?telegramId=${telegramId}`);
+    if (!res.ok) throw new Error("Failed to fetch groups");
+    return res.json();
+  },
+
+  async purchaseGroup(telegramId: number, groupId: string): Promise<GroupPurchaseResponse> {
+    const res = await fetch("/api/groups/purchase", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telegramId, groupId }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to purchase group");
+    }
+    return data;
+  },
+
+  async updateGroupLink(groupId: string, inviteLink: string): Promise<{ success: boolean; groupId: string; inviteLink: string }> {
+    const res = await fetch("/api/admin/update-group-link", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ groupId, inviteLink }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || "Failed to update group link");
+    }
+    return data;
+  },
+
   async createCheckoutSession(params: {
     telegramId: number;
     amount: number;
     currency: string;
     firstName?: string;
     username?: string;
+    groupId?: string;
   }): Promise<CheckoutSessionResponse> {
     const res = await fetch("/api/stripe/create-checkout-session", {
       method: "POST",
@@ -40,6 +73,7 @@ export const api = {
     success: boolean;
     wallet: UserWallet;
     transaction?: Transaction;
+    unlockedGroup?: any;
     message: string;
     alreadyCredited?: boolean;
   }> {
@@ -52,21 +86,6 @@ export const api = {
       const err = await res.json().catch(() => ({ error: "Verification failed" }));
       throw new Error(err.error || "Failed to verify payment session");
     }
-    return res.json();
-  },
-
-  async testDeposit(telegramId: number, amount: number, currency: string = "GBP"): Promise<{
-    success: boolean;
-    wallet: UserWallet;
-    transaction: Transaction;
-    message: string;
-  }> {
-    const res = await fetch("/api/wallet/test-deposit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ telegramId, amount, currency }),
-    });
-    if (!res.ok) throw new Error("Test deposit failed");
     return res.json();
   }
 };

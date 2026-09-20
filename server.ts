@@ -40,24 +40,126 @@ interface UserWallet {
   createdAt: string;
   updatedAt: string;
   transactions: Transaction[];
+  purchasedGroups?: string[];
 }
+
+export interface GroupConfig {
+  id: string;
+  name: string;
+  price: number;
+  currency: string;
+  description: string;
+  tag?: string;
+  defaultLink: string;
+}
+
+// User's 9 groups for sale
+export const DEFAULT_GROUPS: GroupConfig[] = [
+  {
+    id: "all-groups",
+    name: "All Groups Access",
+    price: 50,
+    currency: "GBP",
+    description: "Complete master access to every single exclusive group",
+    tag: "BEST VALUE",
+    defaultLink: "https://t.me/+AllGroupsMasterVIP",
+  },
+  {
+    id: "baller-bundle",
+    name: "Baller Bundle",
+    price: 30,
+    currency: "GBP",
+    description: "Full Baller tier bundle access package",
+    tag: "POPULAR",
+    defaultLink: "https://t.me/+BallerBundleVIP",
+  },
+  {
+    id: "ebony",
+    name: "Ebony",
+    price: 10,
+    currency: "GBP",
+    description: "Exclusive Ebony group access",
+    defaultLink: "https://t.me/+EbonyVIPAccess",
+  },
+  {
+    id: "chav",
+    name: "Chav",
+    price: 10,
+    currency: "GBP",
+    description: "Exclusive Chav group access",
+    defaultLink: "https://t.me/+ChavVIPAccess",
+  },
+  {
+    id: "desi",
+    name: "Desi",
+    price: 10,
+    currency: "GBP",
+    description: "Exclusive Desi group access",
+    defaultLink: "https://t.me/+DesiVIPAccess",
+  },
+  {
+    id: "british",
+    name: "British",
+    price: 10,
+    currency: "GBP",
+    description: "Exclusive British group access",
+    defaultLink: "https://t.me/+BritishVIPAccess",
+  },
+  {
+    id: "scottish",
+    name: "Scottish",
+    price: 10,
+    currency: "GBP",
+    description: "Exclusive Scottish group access",
+    defaultLink: "https://t.me/+ScottishVIPAccess",
+  },
+  {
+    id: "irish",
+    name: "Irish",
+    price: 10,
+    currency: "GBP",
+    description: "Exclusive Irish group access",
+    defaultLink: "https://t.me/+IrishVIPAccess",
+  },
+  {
+    id: "baller-group",
+    name: "Baller Group",
+    price: 5,
+    currency: "GBP",
+    description: "Direct Baller community access",
+    defaultLink: "https://t.me/+BallerGroupAccess",
+  },
+];
 
 interface DBStore {
   wallets: Record<string, UserWallet>;
   processedSessions: Record<string, boolean>;
+  groupLinks: Record<string, string>;
+  userPurchases: Record<string, string[]>;
 }
 
 // Load store from disk or initialize
 function loadStore(): DBStore {
+  const initialLinks: Record<string, string> = {};
+  for (const g of DEFAULT_GROUPS) {
+    initialLinks[g.id] = g.defaultLink;
+  }
+
   try {
     if (fs.existsSync(STORE_PATH)) {
       const raw = fs.readFileSync(STORE_PATH, "utf-8");
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      return {
+        wallets: parsed.wallets || {},
+        processedSessions: parsed.processedSessions || {},
+        groupLinks: { ...initialLinks, ...(parsed.groupLinks || {}) },
+        userPurchases: parsed.userPurchases || {},
+      };
     }
   } catch (err) {
     console.error("Error reading store from disk, initializing new store:", err);
   }
-  return { wallets: {}, processedSessions: {} };
+  return { wallets: {}, processedSessions: {}, groupLinks: initialLinks, userPurchases: {} };
 }
 
 const db: DBStore = loadStore();
@@ -180,6 +282,46 @@ function creditWallet(
   return { wallet, transaction };
 }
 
+// Unlock group access for Telegram user
+function unlockGroup(telegramId: number, groupId: string): { success: boolean; group?: GroupConfig; inviteLink?: string } {
+  const group = DEFAULT_GROUPS.find((g) => g.id === groupId);
+  if (!group) return { success: false };
+
+  const key = String(telegramId);
+  if (!db.userPurchases[key]) {
+    db.userPurchases[key] = [];
+  }
+
+  // If all-groups is purchased, unlock all groups
+  if (groupId === "all-groups") {
+    for (const g of DEFAULT_GROUPS) {
+      if (!db.userPurchases[key].includes(g.id)) {
+        db.userPurchases[key].push(g.id);
+      }
+    }
+  } else {
+    if (!db.userPurchases[key].includes(groupId)) {
+      db.userPurchases[key].push(groupId);
+    }
+  }
+
+  const wallet = getOrCreateWallet(telegramId);
+  wallet.purchasedGroups = Array.from(new Set([...(wallet.purchasedGroups || []), ...db.userPurchases[key]]));
+  wallet.updatedAt = new Date().toISOString();
+  saveStore();
+
+  const inviteLink = db.groupLinks[groupId] || group.defaultLink;
+
+  broadcastToUser(telegramId, "GROUP_PURCHASED", {
+    groupId,
+    groupName: group.name,
+    inviteLink,
+    purchasedGroups: db.userPurchases[key],
+  });
+
+  return { success: true, group, inviteLink };
+}
+
 async function startServer() {
   const app = express();
 
@@ -224,15 +366,19 @@ async function startServer() {
         const telegramIdStr = session.metadata?.telegramId;
         const telegramId = telegramIdStr ? parseInt(telegramIdStr, 10) : null;
         const amountTotal = session.amount_total ? session.amount_total / 100 : 0;
-        const currency = (session.currency || "usd").toUpperCase();
+        const currency = (session.currency || "gbp").toUpperCase();
+        const groupId = session.metadata?.groupId;
 
         if (telegramId && amountTotal > 0) {
           console.log(`💳 Stripe Checkout Completed: Crediting $${amountTotal} ${currency} to Telegram user ${telegramId}`);
+          if (groupId) {
+            unlockGroup(telegramId, groupId);
+          }
           creditWallet(
             telegramId,
             amountTotal,
             currency,
-            `Stripe Deposit (Card / Apple Pay / Google Pay)`,
+            groupId ? `Stripe Purchase: Group ${groupId}` : `Stripe Deposit (Card / Apple Pay / Google Pay)`,
             sessionId,
             typeof session.payment_intent === 'string' ? session.payment_intent : undefined
           );
@@ -332,10 +478,10 @@ async function startServer() {
     res.json(wallet);
   });
 
-  // Create Stripe Checkout Session
+  // Create Stripe Checkout Session (Real Stripe - no simulated free money)
   app.post("/api/stripe/create-checkout-session", async (req, res) => {
     try {
-      const { telegramId, amount, currency = "GBP", firstName, username } = req.body;
+      const { telegramId, amount, currency = "GBP", firstName, username, groupId } = req.body;
       const numericId = parseInt(telegramId, 10);
       const numericAmount = parseFloat(amount);
 
@@ -349,27 +495,29 @@ async function startServer() {
         return;
       }
 
-      const host = req.get("host") || `localhost:${PORT}`;
-      const protocol = req.protocol === "https" || req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
-      const appUrl = process.env.APP_URL || `${protocol}://${host}`;
-
       const stripe = getStripe();
-
-      // If Stripe is not configured or in sandbox simulation
       if (!stripe) {
-        // Return simulated checkout session
-        const mockSessionId = `mock_sess_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-        res.json({
-          simulated: true,
-          sessionId: mockSessionId,
-          checkoutUrl: `${appUrl}/?session_id=${mockSessionId}&simulated=true&amount=${numericAmount}&currency=${currency}&tg_id=${numericId}`,
-          message: "Stripe key not configured. Simulated instant checkout prepared.",
+        res.status(400).json({
+          error: "Stripe is not configured yet on your server. Please add your STRIPE_SECRET_KEY (sk_live_... or sk_test_...) into your Render environment variables or .env file to enable real payments.",
+          configured: false,
         });
         return;
       }
 
+      const host = req.get("host") || `localhost:${PORT}`;
+      const protocol = req.protocol === "https" || req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
+      const appUrl = process.env.APP_URL || `${protocol}://${host}`;
+
       const cleanCurrency = (currency || "gbp").toLowerCase();
       const amountInCents = Math.round(numericAmount * 100);
+
+      const targetGroup = groupId ? DEFAULT_GROUPS.find((g) => g.id === groupId) : null;
+      const productName = targetGroup
+        ? `VIP Group: ${targetGroup.name} (£${numericAmount.toFixed(2)})`
+        : `Wallet Deposit: £${numericAmount.toFixed(2)} (${cleanCurrency.toUpperCase()})`;
+      const productDesc = targetGroup
+        ? `Instant Telegram VIP group access link for @${username || numericId}`
+        : `Instant balance deposit to Telegram Wallet for @${username || numericId}`;
 
       // Create genuine Stripe Checkout Session
       const session = await stripe.checkout.sessions.create({
@@ -379,8 +527,8 @@ async function startServer() {
             price_data: {
               currency: cleanCurrency,
               product_data: {
-                name: `Wallet Deposit: £${numericAmount.toFixed(2)} (${cleanCurrency.toUpperCase()})`,
-                description: `Instant deposit to Telegram Wallet for user @${username || numericId}`,
+                name: productName,
+                description: productDesc,
               },
               unit_amount: amountInCents,
             },
@@ -388,20 +536,20 @@ async function startServer() {
           },
         ],
         mode: "payment",
-        success_url: `${appUrl}/?session_id={CHECKOUT_SESSION_ID}&tg_id=${numericId}&status=success`,
+        success_url: `${appUrl}/?session_id={CHECKOUT_SESSION_ID}&tg_id=${numericId}&status=success${groupId ? `&unlocked=${groupId}` : ""}`,
         cancel_url: `${appUrl}/?status=cancelled&tg_id=${numericId}`,
         metadata: {
           telegramId: String(numericId),
           firstName: firstName || "",
           username: username || "",
           depositAmount: String(numericAmount),
+          groupId: groupId || "",
         },
       });
 
       res.json({
         sessionId: session.id,
         checkoutUrl: session.url,
-        simulated: false,
       });
     } catch (err: any) {
       console.error("Error creating checkout session:", err);
@@ -409,7 +557,7 @@ async function startServer() {
     }
   });
 
-  // Verify and credit session upon client return (handles instant crediting even without webhooks)
+  // Verify and credit session upon client return (requires real paid Stripe session)
   app.post("/api/stripe/verify-session", async (req, res) => {
     try {
       const { sessionId, telegramId } = req.body;
@@ -432,45 +580,30 @@ async function startServer() {
         return;
       }
 
-      // If simulated session
-      if (sessionId.startsWith("mock_sess_")) {
-        const amount = parseFloat(req.body.amount || "25");
-        const currency = req.body.currency || "GBP";
-        const result = creditWallet(
-          numericId,
-          amount,
-          currency,
-          `Demo Instant Deposit (Simulated Stripe £${amount.toFixed(2)})`,
-          sessionId
-        );
-        res.json({
-          success: true,
-          simulated: true,
-          wallet: result.wallet,
-          transaction: result.transaction,
-          message: "Simulated deposit credited instantly!",
-        });
-        return;
-      }
-
       const stripe = getStripe();
       if (!stripe) {
         res.status(400).json({ error: "Stripe not configured on server" });
         return;
       }
 
-      // Retrieve real session from Stripe
+      // Retrieve real session from Stripe API
       const session = await stripe.checkout.sessions.retrieve(sessionId);
       if (session.payment_status === "paid") {
         const amountTotal = session.amount_total ? session.amount_total / 100 : 0;
-        const currency = (session.currency || "usd").toUpperCase();
+        const currency = (session.currency || "gbp").toUpperCase();
         const metaId = session.metadata?.telegramId ? parseInt(session.metadata.telegramId, 10) : numericId;
+        const groupId = session.metadata?.groupId;
+
+        let unlockedGroup = null;
+        if (groupId) {
+          unlockedGroup = unlockGroup(metaId, groupId);
+        }
 
         const result = creditWallet(
           metaId,
           amountTotal,
           currency,
-          `Stripe Checkout Deposit`,
+          groupId ? `Stripe Purchase: ${unlockedGroup?.group?.name || groupId}` : `Stripe Card / Apple Pay Deposit`,
           sessionId,
           typeof session.payment_intent === 'string' ? session.payment_intent : undefined
         );
@@ -479,13 +612,14 @@ async function startServer() {
           success: true,
           wallet: result.wallet,
           transaction: result.transaction,
-          message: "Stripe payment verified! Funds credited instantly.",
+          unlockedGroup,
+          message: "Stripe payment verified! Funds & access granted instantly.",
         });
       } else {
         res.status(400).json({
           success: false,
           status: session.payment_status,
-          message: "Payment has not been completed yet.",
+          message: "Payment has not been completed yet on Stripe.",
         });
       }
     } catch (err: any) {
@@ -494,31 +628,134 @@ async function startServer() {
     }
   });
 
-  // Instant Instant Test Deposit endpoint (for immediate testing in Mini App)
-  app.post("/api/wallet/test-deposit", (req, res) => {
-    const { telegramId, amount = 25, currency = "GBP" } = req.body;
-    const numericId = parseInt(telegramId, 10);
-    const numericAmount = parseFloat(amount);
+  // Get all groups and user's purchase status
+  app.get("/api/groups", (req, res) => {
+    const telegramIdStr = req.query.telegramId as string;
+    const numericId = telegramIdStr ? parseInt(telegramIdStr, 10) : null;
+    const key = numericId ? String(numericId) : "";
+    const userPurchases = key && db.userPurchases[key] ? db.userPurchases[key] : [];
 
-    if (!numericId || isNaN(numericId)) {
-      res.status(400).json({ error: "Valid telegramId is required" });
+    const groups = DEFAULT_GROUPS.map((g) => {
+      const isPurchased = userPurchases.includes(g.id);
+      const inviteLink = isPurchased ? (db.groupLinks[g.id] || g.defaultLink) : undefined;
+      return {
+        id: g.id,
+        name: g.name,
+        price: g.price,
+        currency: g.currency,
+        description: g.description,
+        tag: g.tag,
+        isPurchased,
+        inviteLink,
+      };
+    });
+
+    res.json({ groups, purchasedCount: userPurchases.length });
+  });
+
+  // Purchase group with wallet balance
+  app.post("/api/groups/purchase", (req, res) => {
+    try {
+      const { telegramId, groupId } = req.body;
+      const numericId = parseInt(telegramId, 10);
+      if (!numericId || !groupId) {
+        res.status(400).json({ error: "telegramId and groupId are required" });
+        return;
+      }
+
+      const group = DEFAULT_GROUPS.find((g) => g.id === groupId);
+      if (!group) {
+        res.status(404).json({ error: "Group not found" });
+        return;
+      }
+
+      const key = String(numericId);
+      const userPurchases = db.userPurchases[key] || [];
+
+      // If already purchased, return existing link without charging
+      if (userPurchases.includes(groupId)) {
+        const inviteLink = db.groupLinks[groupId] || group.defaultLink;
+        const wallet = getOrCreateWallet(numericId);
+        res.json({
+          success: true,
+          alreadyOwned: true,
+          group,
+          inviteLink,
+          wallet,
+          message: `You already own access to ${group.name}!`,
+        });
+        return;
+      }
+
+      const wallet = getOrCreateWallet(numericId);
+      if (wallet.balance < group.price) {
+        res.status(400).json({
+          error: `Insufficient balance. ${group.name} is £${group.price.toFixed(2)}, but you currently have £${wallet.balance.toFixed(2)}.`,
+          required: group.price,
+          balance: wallet.balance,
+          difference: Math.round((group.price - wallet.balance) * 100) / 100,
+        });
+        return;
+      }
+
+      // Deduct price from wallet balance
+      wallet.balance = Math.round((wallet.balance - group.price) * 100) / 100;
+      wallet.updatedAt = new Date().toISOString();
+
+      const tx: Transaction = {
+        id: `tx_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        telegramId: numericId,
+        type: "withdrawal",
+        amount: -group.price,
+        currency: "GBP",
+        status: "completed",
+        description: `Unlocked: ${group.name} (£${group.price.toFixed(2)})`,
+        createdAt: new Date().toISOString(),
+      };
+      wallet.transactions.unshift(tx);
+
+      // Unlock group access & link
+      const { inviteLink } = unlockGroup(numericId, groupId);
+
+      // Broadcast real-time balance update
+      broadcastToUser(numericId, "BALANCE_UPDATED", {
+        balance: wallet.balance,
+        currency: wallet.currency,
+        transaction: tx,
+      });
+
+      res.json({
+        success: true,
+        group,
+        inviteLink,
+        wallet,
+        message: `🎉 Successfully unlocked ${group.name}! Click below to join now.`,
+      });
+    } catch (err: any) {
+      console.error("Error purchasing group:", err);
+      res.status(500).json({ error: err.message || "Failed to purchase group" });
+    }
+  });
+
+  // Admin endpoint: update custom telegram invite link for a group
+  app.post("/api/admin/update-group-link", (req, res) => {
+    const { groupId, inviteLink } = req.body;
+    if (!groupId || !inviteLink) {
+      res.status(400).json({ error: "groupId and inviteLink are required" });
       return;
     }
-
-    const mockSessionId = `test_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-    const result = creditWallet(
-      numericId,
-      numericAmount,
-      currency,
-      `Instant Test Deposit (£${numericAmount.toFixed(2)})`,
-      mockSessionId
-    );
-
+    const group = DEFAULT_GROUPS.find((g) => g.id === groupId);
+    if (!group) {
+      res.status(404).json({ error: "Group not found" });
+      return;
+    }
+    db.groupLinks[groupId] = String(inviteLink).trim();
+    saveStore();
     res.json({
       success: true,
-      wallet: result.wallet,
-      transaction: result.transaction,
-      message: "Test funds added instantly!",
+      groupId,
+      inviteLink: db.groupLinks[groupId],
+      message: `Updated invite link for ${group.name}`,
     });
   });
 

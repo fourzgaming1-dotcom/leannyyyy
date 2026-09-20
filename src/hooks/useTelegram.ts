@@ -63,24 +63,16 @@ declare global {
   }
 }
 
-// Fallback demo users for browser/preview testing
+// Fallback live profiles for browser preview
 export const DEMO_USERS: TelegramUser[] = [
   {
-    id: 84920194,
-    first_name: "Alex",
-    last_name: "Vance",
-    username: "alex_vance",
+    id: 100001,
+    first_name: "VIP Member",
+    username: "vip_member",
     is_premium: true,
   },
   {
-    id: 93821045,
-    first_name: "Elena",
-    last_name: "Rostova",
-    username: "elena_tma",
-    is_premium: false,
-  },
-  {
-    id: 48291048,
+    id: 100002,
     first_name: "Oshae",
     username: "oshae_dev",
     is_premium: true,
@@ -137,12 +129,22 @@ export function useTelegram() {
       }
     } else {
       setIsTelegram(false);
-      // Retrieve saved demo user from localStorage if present
+      // Retrieve saved user from localStorage if present and valid
       const savedUser = localStorage.getItem("tma_active_demo_user");
       if (savedUser) {
         try {
-          setCurrentUser(JSON.parse(savedUser));
-        } catch {}
+          const parsed = JSON.parse(savedUser);
+          if (parsed && parsed.id && parsed.id !== 84920194 && parsed.id !== 987654321) {
+            setCurrentUser(parsed);
+          } else {
+            setCurrentUser(DEMO_USERS[0]);
+            localStorage.removeItem("tma_active_demo_user");
+          }
+        } catch {
+          setCurrentUser(DEMO_USERS[0]);
+        }
+      } else {
+        setCurrentUser(DEMO_USERS[0]);
       }
     }
   }, []);
@@ -169,8 +171,21 @@ export function useTelegram() {
   const openUrl = useCallback((url: string) => {
     const tg = window.Telegram?.WebApp;
     if (tg && typeof tg.openLink === "function") {
-      tg.openLink(url);
-    } else {
+      try {
+        tg.openLink(url);
+        return;
+      } catch (err) {
+        console.warn("Telegram openLink error, falling back to window:", err);
+      }
+    }
+
+    try {
+      // In browser/iframe, opening in a new tab allows Stripe Checkout to load safely without frame restrictions
+      const opened = window.open(url, "_blank", "noopener,noreferrer");
+      if (!opened) {
+        window.location.href = url;
+      }
+    } catch {
       window.location.href = url;
     }
   }, []);
