@@ -1,0 +1,71 @@
+{
+  "wallets": {
+    "84920194": {
+      "telegramId": 84920194,
+      "username": "alex_vance",
+      "firstName": "Alex",
+      "balance": 150.00,
+      "currency": "GBP",
+      "createdAt": "2026-09-20T17:56:10.858Z",
+      "updatedAt": "2026-09-20T18:05:00.000Z",
+      "transactions": [
+        {
+          "id": "tx_initial_gbp_deposit",
+          "telegramId": 84920194,
+          "type": "deposit",
+          "amount": 150.00,
+          "currency": "GBP",
+          "status": "completed",
+          "stripeSessionId": "cs_live_instant_gbp",
+          "description": "Initial Stripe Card Deposit (£150.00)",
+          "createdAt": "2026-09-20T18:04:00.000Z"
+        }
+      ]
+    },
+    "93821045": {
+      "telegramId": 93821045,
+      "username": "elena_tma",
+      "firstName": "Elena",
+      "balance": 75.00,
+      "currency": "GBP",
+      "createdAt": "2026-09-20T18:00:00.000Z",
+      "updatedAt": "2026-09-20T18:05:00.000Z",
+      "transactions": [
+        {
+          "id": "tx_elena_gbp_deposit",
+          "telegramId": 93821045,
+          "type": "deposit",
+          "amount": 75.00,
+          "currency": "GBP",
+          "status": "completed",
+          "description": "Stripe Apple Pay Deposit (£75.00)",
+          "createdAt": "2026-09-20T18:02:00.000Z"
+        }
+      ]
+    },
+    "48291048": {
+      "telegramId": 48291048,
+      "username": "oshae_dev",
+      "firstName": "Oshae",
+      "balance": 250.00,
+      "currency": "GBP",
+      "createdAt": "2026-09-20T18:00:00.000Z",
+      "updatedAt": "2026-09-20T18:05:00.000Z",
+      "transactions": [
+        {
+          "id": "tx_oshae_gbp_deposit",
+          "telegramId": 48291048,
+          "type": "deposit",
+          "amount": 250.00,
+          "currency": "GBP",
+          "status": "completed",
+          "description": "Stripe Card Instant Deposit (£250.00)",
+          "createdAt": "2026-09-20T18:01:00.000Z"
+        }
+      ]
+    }
+  },
+  "processedSessions": {
+    "cs_live_instant_gbp": true
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Telegram Stripe Wallet",
+  "description": "Telegram Mini App wallet allowing users to deposit funds via Stripe with instant balance updates and transaction receipts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

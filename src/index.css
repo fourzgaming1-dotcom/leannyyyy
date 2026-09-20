@@ -1,0 +1,98 @@
+@import "tailwindcss";
+
+:root {
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --color-pink-primary: #ec4899;
+  --color-pink-neon: #ff2e93;
+  --color-black-night: #05010a;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #030006;
+  color: #fdf2f8;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+  min-height: 100vh;
+}
+
+/* Custom scrollbar in pink/black theme */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #090212;
+}
+::-webkit-scrollbar-thumb {
+  background: #3b0764;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #ec4899;
+}
+
+/* Starfield and cosmic nebula animations */
+@keyframes twinkle {
+  0%, 100% {
+    opacity: 0.2;
+    transform: scale(0.8);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.3);
+  }
+}
+
+@keyframes floatNebula {
+  0%, 100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  50% {
+    transform: translate(15px, -20px) scale(1.08);
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 15px rgba(236, 72, 153, 0.25), inset 0 0 10px rgba(244, 63, 94, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(255, 46, 147, 0.5), inset 0 0 15px rgba(236, 72, 153, 0.25);
+  }
+}
+
+@keyframes balanceFlash {
+  0% {
+    text-shadow: 0 0 0px rgba(255, 46, 147, 0);
+    transform: scale(1);
+  }
+  30% {
+    text-shadow: 0 0 35px #ff2e93, 0 0 60px #ec4899;
+    transform: scale(1.04);
+  }
+  100% {
+    text-shadow: 0 0 15px rgba(236, 72, 153, 0.4);
+    transform: scale(1);
+  }
+}
+
+.animate-twinkle-slow {
+  animation: twinkle 4s ease-in-out infinite;
+}
+
+.animate-twinkle-fast {
+  animation: twinkle 2.5s ease-in-out infinite;
+}
+
+.animate-float-nebula {
+  animation: floatNebula 12s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 3s ease-in-out infinite;
+}
+
+.animate-balance-flash {
+  animation: balanceFlash 0.8s ease-out;
+}
