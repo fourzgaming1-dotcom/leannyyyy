@@ -195,7 +195,7 @@ function broadcastToUser(telegramId: number, event: string, data: any) {
 // Lazy Stripe initialization
 let stripeInstance: Stripe | null = null;
 function getStripe(): Stripe | null {
-  const key = process.env.STRIPE_SECRET_KEY;
+  const key = process.env.STRIPE_SECRET_KEY;console.log("Stripe key loaded:", !!key);
   if (!key) return null;
   if (!stripeInstance) {
     stripeInstance = new Stripe(key, {
