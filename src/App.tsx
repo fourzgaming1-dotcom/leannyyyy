@@ -3,7 +3,6 @@ import { UserWallet, ServerConfig, GroupItem } from "./types";
 import { api } from "./services/api";
 import { useTelegram } from "./hooks/useTelegram";
 import { Header } from "./components/Header";
-import { BalanceCard } from "./components/BalanceCard";
 import { DepositModal } from "./components/DepositModal";
 import { GroupStore } from "./components/GroupStore";
 import { TransactionList } from "./components/TransactionList";
@@ -207,12 +206,19 @@ export default function App() {
       {/* Night Sky Cosmic Starfield Backdrop */}
       <NightSky />
 
-      {/* Header */}
+      {/* Header with Top Balance Bar */}
       <Header
         user={user}
         isTelegram={isTelegram}
         sseConnected={sseConnected}
         config={config}
+        wallet={wallet}
+        loading={loading}
+        onRefresh={refreshAll}
+        onOpenDeposit={(amt?: number) => {
+          if (amt) setDepositPrefillAmount(amt);
+          setIsDepositModalOpen(true);
+        }}
         onSwitchUser={switchDemoUser}
         onOpenGuide={() => setIsGuideModalOpen(true)}
       />
@@ -243,25 +249,9 @@ export default function App() {
             onClick={() => setIsGuideModalOpen(true)}
             className="px-3 py-1.5 rounded-xl bg-pink-950/80 hover:bg-pink-900 border border-pink-500/40 text-pink-200 font-bold text-[11px] whitespace-nowrap transition-colors cursor-pointer shadow-[0_0_10px_rgba(255,46,147,0.2)]"
           >
-            Bot Guide
+            How It Works
           </button>
         </div>
-
-        {/* Available Balance Card: Hero element */}
-        <BalanceCard
-          wallet={wallet}
-          config={config}
-          loading={loading}
-          onRefresh={refreshAll}
-          onOpenDeposit={(amt?: number) => {
-            if (amt) setDepositPrefillAmount(amt);
-            setIsDepositModalOpen(true);
-          }}
-          onScrollToStore={() => {
-            const el = document.getElementById("exclusive-groups-store");
-            el?.scrollIntoView({ behavior: "smooth" });
-          }}
-        />
 
         {/* Groups for Sale: Front and Center */}
         <section id="exclusive-groups-store">
@@ -297,8 +287,8 @@ export default function App() {
             className="p-3.5 rounded-2xl bg-[#080112]/80 border border-pink-500/20 hover:border-pink-500/50 text-left transition-all flex items-center justify-between group cursor-pointer backdrop-blur-xl"
           >
             <div>
-              <span className="font-bold text-pink-100 block">Bot & Render</span>
-              <span className="text-[11px] text-pink-300/70">Setup & Webhooks</span>
+              <span className="font-bold text-pink-100 block">How It Works</span>
+              <span className="text-[11px] text-pink-300/70">Instant VIP Access & FAQ</span>
             </div>
             <ChevronRight className="w-4 h-4 text-pink-500/70 group-hover:text-pink-300 group-hover:translate-x-0.5 transition-all" />
           </button>
