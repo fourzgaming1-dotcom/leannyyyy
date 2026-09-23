@@ -6,7 +6,7 @@ import { Header } from "./components/Header";
 import { DepositModal } from "./components/DepositModal";
 import { GroupStore } from "./components/GroupStore";
 import { TransactionList } from "./components/TransactionList";
-
+import { BotSetupGuide } from "./components/BotSetupGuide";
 import { CelebrationToast } from "./components/CelebrationToast";
 import { NightSky } from "./components/NightSky";
 import { Shield, Sparkles, Bot, ChevronRight, Users } from "lucide-react";

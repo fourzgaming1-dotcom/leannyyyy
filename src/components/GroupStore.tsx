@@ -142,39 +142,14 @@ export const GroupStore: React.FC<GroupStoreProps> = ({
 
   return (
     <div className="w-full space-y-4">
-      {/* Section Header */}
-      <div className="flex items-center justify-between gap-2 pt-2">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-pink-950/80 border border-pink-500/30 flex items-center justify-center text-pink-400">
-            <ShoppingBag className="w-4 h-4" />
-          </div>
-          <div>
-            <h2 className="text-sm font-extrabold text-white tracking-wide flex items-center gap-1.5">
-              <span>Exclusive Groups Store</span>
-              {unlockedCount > 0 && (
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-500/40 text-emerald-300">
-                  {unlockedCount} Unlocked
-                </span>
-              )}
-            </h2>
-            <p className="text-[11px] text-pink-300/70">
-              Links available instantly upon purchase
-            </p>
-          </div>
-        </div>
-
-        {/* Link Management Button for Owner */}
-        <button
-          onClick={() => {
-            setShowAdminLinks(!showAdminLinks);
-            triggerHaptic("light");
-          }}
-          className="p-1.5 rounded-xl bg-black/60 hover:bg-pink-950/60 border border-pink-500/30 text-pink-300 hover:text-white text-xs flex items-center gap-1 transition-all cursor-pointer"
-          title="Configure Telegram Invite Links"
-        >
-          <Settings className="w-3.5 h-3.5" />
-          <span className="text-[10px] hidden sm:inline">Set Links</span>
-        </button>
+      {/* Brand Header */}
+      <div className="flex flex-col items-center justify-center text-center pt-2 pb-1">
+        <h1 className="text-3xl sm:text-4xl font-black tracking-wider text-pink-500 drop-shadow-[0_0_20px_rgba(255,46,147,0.5)]">
+          sxnti
+        </h1>
+        <span className="text-xs sm:text-sm font-bold tracking-[0.28em] text-white uppercase -mt-0.5 opacity-90">
+          app
+        </span>
       </div>
 
       {/* Filter Tabs */}
