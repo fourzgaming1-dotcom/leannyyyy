@@ -54,25 +54,25 @@ export interface GroupConfig {
   defaultLink: string;
 }
 
-// User's 9 groups for sale
+// User's exclusive groups for sale with verified Telegram invite links
 export const DEFAULT_GROUPS: GroupConfig[] = [
   {
     id: "all-groups",
     name: "All Groups Access",
     price: 50,
     currency: "GBP",
-    description: "Complete master access to every single exclusive group",
+    description: "Complete master access to every single exclusive group (54+ groups)",
     tag: "BEST VALUE",
-    defaultLink: "https://t.me/AllGroupsMasterVIP",
+    defaultLink: "https://t.me/+-xdnbgG9fGEyNWE0",
   },
   {
     id: "baller-bundle",
     name: "Baller Bundle",
     price: 30,
     currency: "GBP",
-    description: "Full Baller tier bundle access package",
+    description: "Full Baller tier bundle access package (54 groups included)",
     tag: "POPULAR",
-    defaultLink: "https://t.me/BallerBundleVIP",
+    defaultLink: "https://t.me/addlist/r-kbWFRYsWBiMmJk",
   },
   {
     id: "ebony",
@@ -80,7 +80,7 @@ export const DEFAULT_GROUPS: GroupConfig[] = [
     price: 10,
     currency: "GBP",
     description: "Exclusive Ebony VIP community access & private content hub",
-    defaultLink: "https://t.me/EbonyVIPAccess",
+    defaultLink: "https://t.me/+lQ2DnZj7KLoxNGFk",
   },
   {
     id: "chav",
@@ -91,20 +91,20 @@ export const DEFAULT_GROUPS: GroupConfig[] = [
     defaultLink: "https://t.me/ChavVIPAccess",
   },
   {
-    id: "desi",
-    name: "Desi VIP",
+    id: "asian",
+    name: "Asian VIP",
     price: 10,
     currency: "GBP",
-    description: "Exclusive Indian & Desi VIP community access & South Asian network",
-    defaultLink: "https://t.me/DesiVIPAccess",
+    description: "Exclusive Asian VIP community access & private network",
+    defaultLink: "https://t.me/+mksHs4bdV3hmOWE0",
   },
   {
     id: "british",
-    name: "English VIP",
+    name: "British VIP",
     price: 10,
     currency: "GBP",
-    description: "Exclusive English & British VIP community access & verified members",
-    defaultLink: "https://t.me/BritishVIPAccess",
+    description: "Exclusive British VIP community access & verified members",
+    defaultLink: "https://t.me/+uV2_KyUDqZA0MTQ0",
   },
   {
     id: "scottish",
@@ -112,7 +112,7 @@ export const DEFAULT_GROUPS: GroupConfig[] = [
     price: 10,
     currency: "GBP",
     description: "Exclusive Scottish VIP community access & Celtic networks",
-    defaultLink: "https://t.me/ScottishVIPAccess",
+    defaultLink: "https://t.me/+viJcMgttgpI2NzNk",
   },
   {
     id: "irish",
@@ -120,15 +120,15 @@ export const DEFAULT_GROUPS: GroupConfig[] = [
     price: 10,
     currency: "GBP",
     description: "Exclusive Irish VIP community access & Emerald Isle network",
-    defaultLink: "https://t.me/IrishVIPAccess",
+    defaultLink: "https://t.me/+8uct-Zt8z443Y2Fk",
   },
   {
     id: "baller-group",
     name: "Baller VIP Group",
-    price: 5,
+    price: 10,
     currency: "GBP",
     description: "Direct Baller community access & high-roller inner circle",
-    defaultLink: "https://t.me/BallerGroupAccess",
+    defaultLink: "https://t.me/+PhngmOwUaZw4MmFk",
   },
 ];
 
@@ -204,7 +204,7 @@ const WHEEL_PRIZES: WheelPrizeDef[] = [
   { id: "premium_group", label: "Premium Group", shortLabel: "PREMIUM", sub: "GROUP", type: "group", groupId: "baller-group", groupName: "Premium Baller Group", color: "#8b5cf6", weight: 3 },
   { id: "baller_bundle", label: "Baller Bundle", shortLabel: "BALLER", sub: "BUNDLE", type: "group", groupId: "baller-bundle", groupName: "Baller Bundle VIP", color: "#10b981", weight: 2 },
   { id: "ebony_group", label: "Ebony Group", shortLabel: "EBONY", sub: "GROUP", type: "group", groupId: "ebony", groupName: "Ebony VIP", color: "#ec4899", weight: 3 },
-  { id: "desi_group", label: "Desi Group", shortLabel: "DESI", sub: "GROUP", type: "group", groupId: "desi", groupName: "Desi VIP", color: "#f59e0b", weight: 3 },
+  { id: "asian_group", label: "Asian Group", shortLabel: "ASIAN", sub: "GROUP", type: "group", groupId: "asian", groupName: "Asian VIP", color: "#f59e0b", weight: 3 },
   { id: "irish_group", label: "Irish Group", shortLabel: "IRISH", sub: "GROUP", type: "group", groupId: "irish", groupName: "Irish VIP", color: "#059669", weight: 3 },
   { id: "british_group", label: "British Group", shortLabel: "BRITISH", sub: "GROUP", type: "group", groupId: "british", groupName: "British VIP", color: "#3b82f6", weight: 3 },
   { id: "scottish_group", label: "Scottish Group", shortLabel: "SCOTTISH", sub: "GROUP", type: "group", groupId: "scottish", groupName: "Scottish VIP", color: "#6366f1", weight: 3 },
@@ -462,7 +462,8 @@ async function sendTelegramInviteMessage(telegramId: number, group: GroupConfig,
 
 // Unlock group access for Telegram user
 function unlockGroup(telegramId: number, groupId: string): { success: boolean; group?: GroupConfig; inviteLink?: string } {
-  const group = DEFAULT_GROUPS.find((g) => g.id === groupId);
+  const normalizedGroupId = groupId === "desi" ? "asian" : groupId;
+  const group = DEFAULT_GROUPS.find((g) => g.id === normalizedGroupId || g.id === groupId);
   if (!group) return { success: false };
 
   const key = String(telegramId);
@@ -471,14 +472,17 @@ function unlockGroup(telegramId: number, groupId: string): { success: boolean; g
   }
 
   // If all-groups is purchased, unlock all groups
-  if (groupId === "all-groups") {
+  if (group.id === "all-groups") {
     for (const g of DEFAULT_GROUPS) {
       if (!db.userPurchases[key].includes(g.id)) {
         db.userPurchases[key].push(g.id);
       }
     }
   } else {
-    if (!db.userPurchases[key].includes(groupId)) {
+    if (!db.userPurchases[key].includes(group.id)) {
+      db.userPurchases[key].push(group.id);
+    }
+    if (groupId !== group.id && !db.userPurchases[key].includes(groupId)) {
       db.userPurchases[key].push(groupId);
     }
   }
@@ -488,11 +492,11 @@ function unlockGroup(telegramId: number, groupId: string): { success: boolean; g
   wallet.updatedAt = new Date().toISOString();
   saveStore();
 
-  const customLink = db.groupLinks[groupId]?.trim();
+  const customLink = (db.groupLinks[group.id] || db.groupLinks[groupId])?.trim();
   const inviteLink = customLink && customLink.length > 0 ? customLink : group.defaultLink;
 
   broadcastToUser(telegramId, "GROUP_PURCHASED", {
-    groupId,
+    groupId: group.id,
     groupName: group.name,
     inviteLink,
     purchasedGroups: db.userPurchases[key],
@@ -958,7 +962,8 @@ async function startServer() {
         return;
       }
 
-      const group = DEFAULT_GROUPS.find((g) => g.id === groupId);
+      const normalizedGroupId = groupId === "desi" ? "asian" : groupId;
+      const group = DEFAULT_GROUPS.find((g) => g.id === normalizedGroupId || g.id === groupId);
       if (!group) {
         res.status(404).json({ error: "Group not found" });
         return;
@@ -968,8 +973,8 @@ async function startServer() {
       const userPurchases = db.userPurchases[key] || [];
 
       // If already purchased, return existing link without charging
-      if (userPurchases.includes(groupId)) {
-        const inviteLink = db.groupLinks[groupId] || group.defaultLink;
+      if (userPurchases.includes(group.id) || userPurchases.includes(groupId)) {
+        const inviteLink = db.groupLinks[group.id] || db.groupLinks[groupId] || group.defaultLink;
         const wallet = getOrCreateWallet(numericId);
         res.json({
           success: true,

@@ -401,7 +401,7 @@ export const HomeHub: React.FC<HomeHubProps> = ({
               {[
                 { name: "Ebony VIP", price: "£10" },
                 { name: "Chav VIP", price: "£10" },
-                { name: "Desi VIP", price: "£10" },
+                { name: "Asian VIP", price: "£10" },
                 { name: "British VIP", price: "£10" },
                 { name: "Irish VIP", price: "£10" },
                 { name: "Scottish VIP", price: "£10" },

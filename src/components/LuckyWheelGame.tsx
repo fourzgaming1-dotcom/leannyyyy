@@ -34,7 +34,7 @@ export const WHEEL_SECTORS: WheelSectorItem[] = [
   { id: "premium_group", label: "Premium Group", shortLabel: "PREMIUM", sub: "GROUP", type: "group", groupId: "baller-group", groupName: "Premium Baller Group", color: "#8b5cf6", weight: 3 },
   { id: "baller_bundle", label: "Baller Bundle", shortLabel: "BALLER", sub: "BUNDLE", type: "group", groupId: "baller-bundle", groupName: "Baller Bundle VIP", color: "#10b981", weight: 2 },
   { id: "ebony_group", label: "Ebony Group", shortLabel: "EBONY", sub: "GROUP", type: "group", groupId: "ebony", groupName: "Ebony VIP", color: "#ec4899", weight: 3 },
-  { id: "desi_group", label: "Desi Group", shortLabel: "DESI", sub: "GROUP", type: "group", groupId: "desi", groupName: "Desi VIP", color: "#f59e0b", weight: 3 },
+  { id: "asian_group", label: "Asian Group", shortLabel: "ASIAN", sub: "GROUP", type: "group", groupId: "asian", groupName: "Asian VIP", color: "#f59e0b", weight: 3 },
   { id: "irish_group", label: "Irish Group", shortLabel: "IRISH", sub: "GROUP", type: "group", groupId: "irish", groupName: "Irish VIP", color: "#059669", weight: 3 },
   { id: "british_group", label: "British Group", shortLabel: "BRITISH", sub: "GROUP", type: "group", groupId: "british", groupName: "British VIP", color: "#3b82f6", weight: 3 },
   { id: "scottish_group", label: "Scottish Group", shortLabel: "SCOTTISH", sub: "GROUP", type: "group", groupId: "scottish", groupName: "Scottish VIP", color: "#6366f1", weight: 3 },

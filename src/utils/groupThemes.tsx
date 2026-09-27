@@ -110,12 +110,13 @@ export function getGroupTheme(groupId: string): GroupTheme {
         ),
       };
 
+    case "asian":
     case "desi":
       return {
-        id: "desi",
-        flag: "🇮🇳",
-        countryName: "India / Desi",
-        badgeLabel: "🇮🇳 INDIAN VIP EXCLUSIVE",
+        id: "asian",
+        flag: "🌏",
+        countryName: "Asian VIP",
+        badgeLabel: "🌏 ASIAN VIP EXCLUSIVE",
         gradient: "from-[#3d1802] via-[#592303] to-[#240c00]",
         cardBg: "bg-gradient-to-r from-[#381602] via-[#4d1f04] to-[#210b00]",
         borderColor: "border-amber-400",
@@ -124,10 +125,10 @@ export function getGroupTheme(groupId: string): GroupTheme {
         accentTextColor: "text-amber-300",
         priceBg: "bg-amber-950/90 border border-amber-400/60 text-amber-300",
         buttonBg: "bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-400 hover:to-orange-400 text-black shadow-[0_0_25px_rgba(245,158,11,0.5)]",
-        icon: <span className="text-xl">🇮🇳</span>,
+        icon: <span className="text-xl">🌏</span>,
         ambientLight: "bg-amber-400/25",
         category: "international",
-        perks: ["Indian & Desi VIP Network", "Exclusive Regional Content", "Instant Telegram Access"],
+        perks: ["Asian VIP Private Network", "Exclusive Regional Content", "Instant Telegram Access"],
         overlayPattern: (
           <div className="absolute inset-0 pointer-events-none opacity-35 overflow-hidden">
             <div className="absolute -bottom-8 -right-8 w-44 h-44 bg-amber-500/25 rounded-full blur-3xl" />
