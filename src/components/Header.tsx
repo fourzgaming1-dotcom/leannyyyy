@@ -11,6 +11,7 @@ import {
   RefreshCw,
   TrendingUp,
   Wallet,
+  Key,
 } from "lucide-react";
 
 interface HeaderProps {
@@ -24,6 +25,7 @@ interface HeaderProps {
   onOpenDeposit?: (prefilledAmount?: number) => void;
   onSwitchUser: (user: TelegramUser) => void;
   onOpenGuide: () => void;
+  onOpenAdminLinks?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -37,6 +39,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenDeposit,
   onSwitchUser,
   onOpenGuide,
+  onOpenAdminLinks,
 }) => {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isRotating, setIsRotating] = useState(false);
@@ -179,6 +182,19 @@ export const Header: React.FC<HeaderProps> = ({
               <BookOpen className="w-3.5 h-3.5 text-pink-400" />
               <span className="hidden xs:inline">FAQ</span>
             </button>
+
+            {/* Owner Group Links Manager */}
+            {onOpenAdminLinks && (
+              <button
+                id="header-admin-links-btn"
+                onClick={onOpenAdminLinks}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-yellow-950/60 hover:bg-yellow-900/70 border border-yellow-500/40 text-yellow-300 text-xs font-bold shadow-[0_0_10px_rgba(250,204,21,0.2)] transition-colors cursor-pointer"
+                title="Owner: Set Real Group Invite Links"
+              >
+                <Key className="w-3.5 h-3.5 text-yellow-400" />
+                <span className="hidden sm:inline">Links</span>
+              </button>
+            )}
           </div>
         </div>
 

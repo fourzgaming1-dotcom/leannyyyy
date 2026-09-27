@@ -11,7 +11,7 @@ export interface TelegramUser {
 export interface Transaction {
   id: string;
   telegramId: number;
-  type: 'deposit' | 'withdrawal' | 'adjustment';
+  type: 'deposit' | 'withdrawal' | 'adjustment' | 'purchase';
   amount: number;
   currency: string;
   status: 'completed' | 'pending' | 'failed';
@@ -65,3 +65,156 @@ export interface CheckoutSessionResponse {
   simulated?: boolean;
   error?: string;
 }
+
+export type NavTab = 'home' | 'bundles' | 'groups' | 'game' | 'wallet';
+
+export interface GameStatusResponse {
+  spinsLeft: number;
+  freeSpins: number;
+  spinCost: number;
+  balance: number;
+  canSpin: boolean;
+  totalWon: number;
+  totalSpins: number;
+  totalXp: number;
+  vouchers: string[];
+  lastSpin?: string;
+  sectors?: WheelSectorItem[];
+}
+
+export interface WheelSectorItem {
+  id: string;
+  label: string;
+  shortLabel: string;
+  sub: string;
+  type: 'group' | 'credit' | 'xp' | 'spin' | 'voucher' | 'mystery';
+  groupId?: string;
+  groupName?: string;
+  amount?: number;
+  xp?: number;
+  code?: string;
+  color: string;
+  textColor?: string;
+  weight: number;
+}
+
+export interface SpinWheelResponse {
+  success: boolean;
+  prizeIndex: number;
+  prize: WheelSectorItem;
+  usedFreeSpin: boolean;
+  freeSpinsLeft: number;
+  totalWon: number;
+  totalXp: number;
+  totalSpins: number;
+  creditWon?: number;
+  inviteLink?: string;
+  groupName?: string;
+  rewardMessage: string;
+  wallet: UserWallet;
+}
+
+export interface GameClaimResponse {
+  success: boolean;
+  prizeType?: string;
+  rewardMessage?: string;
+  creditAmount?: number;
+  spinsLeft?: number;
+  wallet?: UserWallet;
+}
+
+export type RouletteBetType =
+  | 'straight'
+  | 'red'
+  | 'black'
+  | 'even'
+  | 'odd'
+  | 'low'
+  | 'high'
+  | 'dozen1'
+  | 'dozen2'
+  | 'dozen3'
+  | 'green';
+
+export interface RouletteBet {
+  type: RouletteBetType;
+  number?: number;
+  amount: number;
+  won?: boolean;
+  payout?: number;
+}
+
+export interface RouletteHistoryItem {
+  number: number;
+  color: 'red' | 'black' | 'green';
+  timestamp: string;
+}
+
+export interface RouletteSpinResponse {
+  success: boolean;
+  winningNumber: number;
+  winningColor: 'red' | 'black' | 'green';
+  totalBet: number;
+  totalPayout: number;
+  netProfit: number;
+  isWin: boolean;
+  bets: RouletteBet[];
+  wallet: UserWallet;
+  history: RouletteHistoryItem[];
+}
+
+export interface CrossyJumpMilestone {
+  step: number;
+  label: string;
+  amount: number;
+  name: string;
+}
+
+export interface CrossyStartResponse {
+  success: boolean;
+  runId: string;
+  fee: number;
+  wallet: UserWallet;
+  message: string;
+}
+
+export interface CrossyJumpResponse {
+  success: boolean;
+  step: number;
+  amountEarned: number;
+  totalRunEarnings: number;
+  wallet: UserWallet;
+  message: string;
+  ballerGroupUnlocked?: boolean;
+  ballerInviteLink?: string;
+}
+
+export interface CrossyCashoutResponse {
+  success: boolean;
+  step: number;
+  amountCashedOut: number;
+  wallet: UserWallet;
+  transaction?: Transaction;
+  message: string;
+}
+
+export interface CrossyRunStats {
+  highScoreLane: number;
+  totalEarnings: number;
+  totalRuns: number;
+}
+
+export interface AdminGroupLinksResponse {
+  success: boolean;
+  groupLinks: Record<string, string>;
+  groups: {
+    id: string;
+    name: string;
+    price: number;
+    currency: string;
+    description: string;
+    defaultLink: string;
+    currentLink: string;
+  }[];
+}
+

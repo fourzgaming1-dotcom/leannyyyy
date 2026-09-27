@@ -70,7 +70,7 @@ export const BalanceCard: React.FC<BalanceCardProps> = ({
           </span>
           <span className="inline-flex items-center gap-1 text-[10px] px-2.5 py-0.5 rounded-full font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
             <ShieldCheck className="w-3 h-3 text-emerald-400" />
-            {config?.hasStripeKey && config.stripeMode ? `Stripe ${config.stripeMode.toUpperCase()} Active` : "Stripe LIVE Active"}
+            Stripe Verified Active
           </span>
         </div>
 
@@ -181,7 +181,7 @@ export const BalanceCard: React.FC<BalanceCardProps> = ({
           className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-2xl bg-black/80 hover:bg-pink-950/60 border border-pink-500/40 hover:border-pink-400 text-pink-200 font-bold text-sm active:scale-[0.98] transition-all cursor-pointer shadow-[0_4px_15px_rgba(0,0,0,0.4)]"
         >
           <Sparkles className="w-4 h-4 text-pink-400" />
-          <span>Buy VIP Groups (£5 - £50)</span>
+          <span>Buy VIP Groups (£10 - £50)</span>
         </button>
       </div>
     </div>

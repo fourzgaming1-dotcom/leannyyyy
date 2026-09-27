@@ -109,9 +109,38 @@ export function playSuccessChime() {
 }
 
 export function useTelegram() {
-  const [isTelegram, setIsTelegram] = useState(false);
-  const [currentUser, setCurrentUser] = useState<TelegramUser>(DEMO_USERS[0]);
-  const [colorScheme, setColorScheme] = useState<"light" | "dark">("dark");
+  const [isTelegram, setIsTelegram] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return Boolean(window.Telegram?.WebApp?.initDataUnsafe?.user);
+    }
+    return false;
+  });
+
+  const [currentUser, setCurrentUser] = useState<TelegramUser>(() => {
+    if (typeof window !== "undefined") {
+      const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+      if (tgUser && tgUser.id) {
+        return tgUser;
+      }
+      const savedUser = localStorage.getItem("tma_active_demo_user");
+      if (savedUser) {
+        try {
+          const parsed = JSON.parse(savedUser);
+          if (parsed && parsed.id && parsed.id !== 84920194 && parsed.id !== 987654321) {
+            return parsed;
+          }
+        } catch {}
+      }
+    }
+    return DEMO_USERS[0];
+  });
+
+  const [colorScheme, setColorScheme] = useState<"light" | "dark">(() => {
+    if (typeof window !== "undefined" && window.Telegram?.WebApp?.colorScheme) {
+      return window.Telegram.WebApp.colorScheme;
+    }
+    return "dark";
+  });
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
@@ -168,25 +197,49 @@ export function useTelegram() {
     }
   }, []);
 
-  const openUrl = useCallback((url: string) => {
+  const openUrl = useCallback((rawUrl: string) => {
+    if (!rawUrl) return;
+    const url = rawUrl.trim();
     const tg = window.Telegram?.WebApp;
-    if (tg && typeof tg.openLink === "function") {
-      try {
-        tg.openLink(url);
-        return;
-      } catch (err) {
-        console.warn("Telegram openLink error, falling back to window:", err);
+
+    const isTelegramLink =
+      url.startsWith("https://t.me/") ||
+      url.startsWith("http://t.me/") ||
+      url.startsWith("t.me/") ||
+      url.startsWith("tg://");
+
+    if (tg) {
+      if (isTelegramLink && typeof tg.openTelegramLink === "function") {
+        try {
+          const fullTelegramUrl = url.startsWith("t.me/") ? `https://${url}` : url;
+          tg.openTelegramLink(fullTelegramUrl);
+          return;
+        } catch (err) {
+          console.warn("Telegram openTelegramLink failed, trying external openLink:", err);
+        }
+      }
+
+      if (typeof tg.openLink === "function") {
+        try {
+          tg.openLink(url);
+          return;
+        } catch (err) {
+          console.warn("Telegram openLink error, falling back to window:", err);
+        }
       }
     }
 
     try {
-      // In browser/iframe, opening in a new tab allows Stripe Checkout to load safely without frame restrictions
-      const opened = window.open(url, "_blank", "noopener,noreferrer");
+      const opened = window.open(url, "_blank");
       if (!opened) {
         window.location.href = url;
       }
     } catch {
-      window.location.href = url;
+      try {
+        window.location.href = url;
+      } catch (e) {
+        console.error("Failed to redirect to URL:", e);
+      }
     }
   }, []);
 

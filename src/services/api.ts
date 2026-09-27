@@ -1,10 +1,46 @@
-import { UserWallet, ServerConfig, CheckoutSessionResponse, Transaction, GroupItem, GroupPurchaseResponse } from "../types";
+import {
+  UserWallet,
+  ServerConfig,
+  CheckoutSessionResponse,
+  Transaction,
+  GroupItem,
+  GroupPurchaseResponse,
+  GameStatusResponse,
+  SpinWheelResponse,
+  RouletteBet,
+  RouletteSpinResponse,
+  RouletteHistoryItem,
+  CrossyJumpResponse,
+  CrossyCashoutResponse,
+  CrossyRunStats,
+  CrossyJumpMilestone,
+  CrossyStartResponse,
+  AdminGroupLinksResponse,
+} from "../types";
+
+async function parseResponse<T = any>(res: Response, fallbackError = "Request failed"): Promise<T> {
+  const text = await res.text();
+  let data: any;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    if (!res.ok) {
+      throw new Error(`Server returned HTTP ${res.status}: ${text.slice(0, 100) || fallbackError}`);
+    }
+    return {} as T;
+  }
+
+  if (!res.ok) {
+    throw new Error(data?.error || `Request failed with status ${res.status}`);
+  }
+
+  return data as T;
+}
 
 export const api = {
   async getConfig(): Promise<ServerConfig> {
     const res = await fetch("/api/config");
-    if (!res.ok) throw new Error("Failed to fetch server config");
-    return res.json();
+    return parseResponse<ServerConfig>(res, "Failed to fetch server config");
   },
 
   async getWallet(telegramId: number, firstName?: string, username?: string): Promise<UserWallet> {
@@ -13,14 +49,12 @@ export const api = {
     if (username) params.set("username", username);
     
     const res = await fetch(`/api/user/${telegramId}?${params.toString()}`);
-    if (!res.ok) throw new Error("Failed to fetch user wallet");
-    return res.json();
+    return parseResponse<UserWallet>(res, "Failed to fetch user wallet");
   },
 
   async getGroups(telegramId: number): Promise<{ groups: GroupItem[]; purchasedCount: number }> {
     const res = await fetch(`/api/groups?telegramId=${telegramId}`);
-    if (!res.ok) throw new Error("Failed to fetch groups");
-    return res.json();
+    return parseResponse<{ groups: GroupItem[]; purchasedCount: number }>(res, "Failed to fetch groups");
   },
 
   async purchaseGroup(telegramId: number, groupId: string): Promise<GroupPurchaseResponse> {
@@ -29,11 +63,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ telegramId, groupId }),
     });
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || "Failed to purchase group");
-    }
-    return data;
+    return parseResponse<GroupPurchaseResponse>(res, "Failed to purchase group");
   },
 
   async updateGroupLink(groupId: string, inviteLink: string): Promise<{ success: boolean; groupId: string; inviteLink: string }> {
@@ -42,11 +72,7 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ groupId, inviteLink }),
     });
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.error || "Failed to update group link");
-    }
-    return data;
+    return parseResponse<{ success: boolean; groupId: string; inviteLink: string }>(res, "Failed to update group link");
   },
 
   async createCheckoutSession(params: {
@@ -62,14 +88,10 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(params),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: "Checkout creation failed" }));
-      throw new Error(err.error || "Failed to create checkout session");
-    }
-    return res.json();
+    return parseResponse<CheckoutSessionResponse>(res, "Failed to create checkout session");
   },
 
-  async verifySession(sessionId: string, telegramId: number, amount?: number, currency?: string): Promise<{
+  async verifySession(sessionId: string, telegramId: number, amount?: number, currency?: string, groupId?: string): Promise<{
     success: boolean;
     wallet: UserWallet;
     transaction?: Transaction;
@@ -80,12 +102,107 @@ export const api = {
     const res = await fetch("/api/stripe/verify-session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId, telegramId, amount, currency }),
+      body: JSON.stringify({ sessionId, telegramId, amount, currency, groupId }),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: "Verification failed" }));
-      throw new Error(err.error || "Failed to verify payment session");
-    }
-    return res.json();
+    return parseResponse(res, "Failed to verify payment session");
+  },
+
+  async getGameStatus(telegramId: number): Promise<GameStatusResponse> {
+    const res = await fetch(`/api/game/status?telegramId=${telegramId}`);
+    return parseResponse<GameStatusResponse>(res, "Failed to fetch game status");
+  },
+
+  async spinWheel(telegramId: number, targetPrizeIndex?: number): Promise<SpinWheelResponse> {
+    const res = await fetch("/api/game/spin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telegramId, targetPrizeIndex }),
+    });
+    return parseResponse<SpinWheelResponse>(res, "Failed to spin wheel");
+  },
+
+  async addTestCredit(telegramId: number): Promise<{ success: boolean; wallet: UserWallet; message: string }> {
+    const res = await fetch("/api/game/add-test-credit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telegramId }),
+    });
+    return parseResponse(res, "Failed to add test credit");
+  },
+
+  async claimGameReward(telegramId: number, prizeType: string): Promise<{
+    success: boolean;
+    prizeType?: string;
+    rewardMessage?: string;
+    creditAmount?: number;
+    spinsLeft?: number;
+    wallet?: UserWallet;
+  }> {
+    const res = await fetch("/api/game/claim", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telegramId, prizeType }),
+    });
+    return parseResponse(res, "Failed to claim game reward");
+  },
+
+  async resetGameSpins(telegramId: number): Promise<{ success: boolean; spinsLeft: number; freeSpins?: number; message: string }> {
+    const res = await fetch("/api/game/reset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telegramId }),
+    });
+    return parseResponse(res, "Failed to reset game spins");
+  },
+
+  async getRouletteHistory(): Promise<{ history: RouletteHistoryItem[] }> {
+    const res = await fetch("/api/roulette/history");
+    return parseResponse<{ history: RouletteHistoryItem[] }>(res, "Failed to fetch roulette history");
+  },
+
+  async spinRoulette(telegramId: number, bets: RouletteBet[]): Promise<RouletteSpinResponse> {
+    const res = await fetch("/api/roulette/spin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telegramId, bets }),
+    });
+    return parseResponse<RouletteSpinResponse>(res, "Failed to execute roulette spin");
+  },
+
+  async getAdminGroupLinks(): Promise<AdminGroupLinksResponse> {
+    const res = await fetch("/api/admin/group-links");
+    return parseResponse<AdminGroupLinksResponse>(res, "Failed to fetch admin group links");
+  },
+
+  async startCrossyRoad(telegramId: number): Promise<CrossyStartResponse> {
+    const res = await fetch("/api/crossy-road/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telegramId }),
+    });
+    return parseResponse<CrossyStartResponse>(res, "Failed to start Crossy Road run");
+  },
+
+  async crossyRoadJump(telegramId: number, step: number, runId: string): Promise<CrossyJumpResponse> {
+    const res = await fetch("/api/crossy-road/jump", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telegramId, step, runId }),
+    });
+    return parseResponse<CrossyJumpResponse>(res, "Failed to process crossy road jump");
+  },
+
+  async getCrossyRoadStats(telegramId: number): Promise<{ stats: CrossyRunStats; milestones: CrossyJumpMilestone[] }> {
+    const res = await fetch(`/api/crossy-road/stats?telegramId=${telegramId}`);
+    return parseResponse<{ stats: CrossyRunStats; milestones: CrossyJumpMilestone[] }>(res, "Failed to fetch crossy road stats");
+  },
+
+  async cashoutCrossyRoad(telegramId: number, step: number, runId: string): Promise<CrossyCashoutResponse> {
+    const res = await fetch("/api/crossy-road/cashout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telegramId, step, runId }),
+    });
+    return parseResponse<CrossyCashoutResponse>(res, "Failed to cash out");
   }
 };

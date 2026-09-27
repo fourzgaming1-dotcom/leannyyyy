@@ -6,17 +6,17 @@ import {
   ExternalLink,
   CheckCircle2,
   Copy,
-  Lock,
   Zap,
-  ShoppingBag,
   CreditCard,
-  Settings,
-  ChevronDown,
-  ChevronUp,
   AlertCircle,
   Loader2,
-  Share2,
+  Crown,
+  Search,
+  ShieldCheck,
+  ArrowRight,
+  Flame,
 } from "lucide-react";
+import { getGroupTheme } from "../utils/groupThemes";
 
 interface GroupStoreProps {
   groups: GroupItem[];
@@ -26,6 +26,7 @@ interface GroupStoreProps {
   onOpenDeposit: () => void;
   openUrl: (url: string) => void;
   triggerHaptic: (type: "light" | "medium" | "heavy" | "success" | "warning" | "error") => void;
+  mode?: "all" | "bundles_only" | "groups_only";
 }
 
 export const GroupStore: React.FC<GroupStoreProps> = ({
@@ -36,17 +37,14 @@ export const GroupStore: React.FC<GroupStoreProps> = ({
   onOpenDeposit,
   openUrl,
   triggerHaptic,
+  mode = "all",
 }) => {
   const [purchasingGroupId, setPurchasingGroupId] = useState<string | null>(null);
   const [copiedGroupId, setCopiedGroupId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successModalGroup, setSuccessModalGroup] = useState<{ group: GroupItem; link: string } | null>(null);
-  const [activeStripeRedirect, setActiveStripeRedirect] = useState<{ group: GroupItem; checkoutUrl: string } | null>(null);
-  const [showAdminLinks, setShowAdminLinks] = useState<boolean>(false);
-  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
-  const [customLinkInput, setCustomLinkInput] = useState<string>("");
-  const [isSavingLink, setIsSavingLink] = useState<boolean>(false);
-  const [filterTab, setFilterTab] = useState<"all" | "unlocked" | "bundles">("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<"all" | "uk_ireland" | "international" | "unlocked">("all");
 
   const balance = wallet ? wallet.balance : 0;
 
@@ -95,13 +93,12 @@ export const GroupStore: React.FC<GroupStoreProps> = ({
       });
 
       if (res.checkoutUrl) {
-        setActiveStripeRedirect({ group, checkoutUrl: res.checkoutUrl });
         triggerHaptic("light");
         openUrl(res.checkoutUrl);
       }
     } catch (err: any) {
       console.error("Stripe group checkout error:", err);
-      setErrorMessage(err.message || "Stripe checkout failed. Check server STRIPE_SECRET_KEY.");
+      setErrorMessage(err.message || "Stripe checkout failed. Please verify payment configuration.");
       triggerHaptic("error");
     } finally {
       setPurchasingGroupId(null);
@@ -115,87 +112,128 @@ export const GroupStore: React.FC<GroupStoreProps> = ({
     setTimeout(() => setCopiedGroupId(null), 2000);
   };
 
-  const handleSaveCustomLink = async (groupId: string) => {
-    if (!customLinkInput.trim()) return;
-    try {
-      setIsSavingLink(true);
-      await api.updateGroupLink(groupId, customLinkInput.trim());
-      triggerHaptic("success");
-      setEditingGroupId(null);
-      setCustomLinkInput("");
-      onRefresh();
-    } catch (err: any) {
-      setErrorMessage(err.message || "Failed to update invite link");
-      triggerHaptic("error");
-    } finally {
-      setIsSavingLink(false);
-    }
-  };
-
+  // Filter based on mode and active tab
   const filteredGroups = groups.filter((g) => {
-    if (filterTab === "unlocked") return g.isPurchased;
-    if (filterTab === "bundles") return g.id === "all-groups" || g.id === "baller-bundle";
+    const isBundle = g.id === "all-groups" || g.id === "baller-bundle";
+    if (mode === "bundles_only" && !isBundle) return false;
+    if (mode === "groups_only" && isBundle) return false;
+
+    // Search query filter
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const theme = getGroupTheme(g.id);
+      if (
+        !g.name.toLowerCase().includes(q) &&
+        !g.description.toLowerCase().includes(q) &&
+        !theme.countryName.toLowerCase().includes(q) &&
+        !theme.badgeLabel.toLowerCase().includes(q)
+      ) {
+        return false;
+      }
+    }
+
+    // Category filter in groups_only mode
+    if (mode === "groups_only") {
+      const theme = getGroupTheme(g.id);
+      if (categoryFilter === "unlocked") return g.isPurchased;
+      if (categoryFilter === "uk_ireland") return theme.category === "uk";
+      if (categoryFilter === "international") return theme.category === "international" || theme.category === "highroller";
+    }
+
     return true;
   });
 
   const unlockedCount = groups.filter((g) => g.isPurchased).length;
 
   return (
-    <div className="w-full space-y-4">
-      {/* Brand Header */}
-      <div className="flex flex-col items-center justify-center text-center pt-2 pb-1">
-        <h1 className="text-3xl sm:text-4xl font-black tracking-wider text-pink-500 drop-shadow-[0_0_20px_rgba(255,46,147,0.5)]">
-          sxnti
-        </h1>
-        <span className="text-xs sm:text-sm font-bold tracking-[0.28em] text-white uppercase -mt-0.5 opacity-90">
-          app
-        </span>
-      </div>
+    <div className="space-y-4">
+      {/* Bundles Header Banner if in bundles_only mode */}
+      {mode === "bundles_only" && (
+        <div className="relative rounded-3xl p-5 overflow-hidden bg-gradient-to-r from-[#2f1b01] via-[#472d02] to-[#1a0e00] border-2 border-yellow-400 shadow-[0_0_40px_rgba(250,204,21,0.35)] text-center space-y-2">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-yellow-400 text-black text-xs font-black uppercase tracking-wider shadow-md">
+            <Crown className="w-3.5 h-3.5" />
+            <span>VIP Bundles & Master Passes</span>
+          </div>
+          <h2 className="text-xl sm:text-2xl font-black text-white">
+            Unlock Full Access & <span className="text-yellow-300">Save Up to £45</span>
+          </h2>
+          <p className="text-xs text-yellow-100/90 max-w-sm mx-auto font-medium">
+            Get lifetime membership to all VIP groups in one pass with instant automated Telegram invite link delivery.
+          </p>
+        </div>
+      )}
 
-      {/* Filter Tabs */}
-      <div className="flex items-center gap-1.5 p-1 bg-black/60 border border-pink-900/30 rounded-xl">
-        <button
-          onClick={() => setFilterTab("all")}
-          className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
-            filterTab === "all"
-              ? "bg-pink-500/30 text-pink-100 border border-pink-500/50 shadow-[0_0_10px_rgba(255,46,147,0.2)]"
-              : "text-pink-400/60 hover:text-pink-200"
-          }`}
-        >
-          All Groups ({groups.length})
-        </button>
-        <button
-          onClick={() => setFilterTab("bundles")}
-          className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
-            filterTab === "bundles"
-              ? "bg-pink-500/30 text-pink-100 border border-pink-500/50 shadow-[0_0_10px_rgba(255,46,147,0.2)]"
-              : "text-pink-400/60 hover:text-pink-200"
-          }`}
-        >
-          Bundles (VIP)
-        </button>
-        <button
-          onClick={() => setFilterTab("unlocked")}
-          className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all ${
-            filterTab === "unlocked"
-              ? "bg-emerald-950/80 text-emerald-300 border border-emerald-500/50"
-              : "text-pink-400/60 hover:text-pink-200"
-          }`}
-        >
-          My Links ({unlockedCount})
-        </button>
-      </div>
+      {/* Groups Filter & Search Bar if in groups_only mode */}
+      {mode === "groups_only" && (
+        <div className="space-y-2.5">
+          {/* Search Box */}
+          <div className="relative">
+            <Search className="w-4 h-4 text-pink-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search VIP groups (e.g. Irish 🇮🇪, Desi 🇮🇳, English 🏴󠁧󠁢󠁥󠁮󠁧󠁿, Scottish 🏴󠁧󠁢󠁳󠁣󠁴󠁿)..."
+              className="w-full bg-[#0a0014]/90 border border-pink-500/30 rounded-2xl pl-10 pr-4 py-2.5 text-xs text-white placeholder-pink-400/40 focus:outline-none focus:border-pink-500 transition-colors"
+            />
+          </div>
+
+          {/* Sub Categories Tabs with Flags */}
+          <div className="flex items-center gap-1.5 p-1 bg-black/70 border border-pink-900/40 rounded-xl overflow-x-auto text-[11px]">
+            <button
+              onClick={() => setCategoryFilter("all")}
+              className={`py-1.5 px-3 rounded-lg font-bold whitespace-nowrap transition-all cursor-pointer ${
+                categoryFilter === "all"
+                  ? "bg-pink-600 text-white font-black shadow-[0_0_12px_rgba(236,72,153,0.4)]"
+                  : "text-pink-300/70 hover:text-white"
+              }`}
+            >
+              All Groups ({groups.filter(g => g.id !== "all-groups" && g.id !== "baller-bundle").length})
+            </button>
+            <button
+              onClick={() => setCategoryFilter("uk_ireland")}
+              className={`py-1.5 px-3 rounded-lg font-bold whitespace-nowrap transition-all cursor-pointer ${
+                categoryFilter === "uk_ireland"
+                  ? "bg-blue-600 text-white font-black shadow-[0_0_12px_rgba(59,130,246,0.4)]"
+                  : "text-pink-300/70 hover:text-white"
+              }`}
+            >
+              🏴󠁧󠁢󠁥󠁮󠁧󠁿 🏴󠁧󠁢󠁳󠁣󠁴󠁿 🇮🇪 UK & Ireland
+            </button>
+            <button
+              onClick={() => setCategoryFilter("international")}
+              className={`py-1.5 px-3 rounded-lg font-bold whitespace-nowrap transition-all cursor-pointer ${
+                categoryFilter === "international"
+                  ? "bg-amber-600 text-white font-black shadow-[0_0_12px_rgba(245,158,11,0.4)]"
+                  : "text-pink-300/70 hover:text-white"
+              }`}
+            >
+              🇮🇳 International & Desi
+            </button>
+            <button
+              onClick={() => setCategoryFilter("unlocked")}
+              className={`py-1.5 px-3 rounded-lg font-bold whitespace-nowrap transition-all cursor-pointer ${
+                categoryFilter === "unlocked"
+                  ? "bg-emerald-600 text-white font-black shadow-[0_0_12px_rgba(16,185,129,0.4)]"
+                  : "text-pink-300/70 hover:text-white"
+              }`}
+            >
+              Unlocked Passes ({unlockedCount})
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Error notification banner if any */}
       {errorMessage && (
-        <div className="p-3 rounded-2xl bg-rose-950/70 border border-rose-500/50 text-rose-200 text-xs flex items-start gap-2 animate-in fade-in">
+        <div className="p-3.5 rounded-2xl bg-rose-950/80 border border-rose-500/50 text-rose-200 text-xs flex items-start gap-2.5 animate-in fade-in">
           <AlertCircle className="w-4 h-4 text-rose-400 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
-            <p>{errorMessage}</p>
+            <p className="font-medium">{errorMessage}</p>
             {errorMessage.includes("Insufficient balance") && (
               <button
                 onClick={onOpenDeposit}
-                className="mt-1.5 px-3 py-1 rounded-lg bg-pink-500 hover:bg-pink-400 text-white font-bold text-[11px] transition-all cursor-pointer"
+                className="mt-2 px-3 py-1 rounded-lg bg-pink-500 hover:bg-pink-400 text-white font-bold text-[11px] transition-all cursor-pointer shadow-[0_0_10px_rgba(236,72,153,0.4)]"
               >
                 Deposit via Stripe Now
               </button>
@@ -204,252 +242,209 @@ export const GroupStore: React.FC<GroupStoreProps> = ({
         </div>
       )}
 
-      {/* Admin Invite Link Editor Panel */}
-      {showAdminLinks && (
-        <div className="p-4 rounded-2xl bg-[#090114]/95 border border-pink-500/40 space-y-3 animate-in fade-in">
-          <div className="flex items-center justify-between pb-2 border-b border-pink-900/40">
-            <div>
-              <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
-                <Settings className="w-3.5 h-3.5 text-pink-400" />
-                <span>Configure Telegram Invite Links</span>
-              </h3>
-              <p className="text-[10px] text-pink-300/70">
-                Buyers will receive these links immediately when they purchase
-              </p>
-            </div>
-            <button
-              onClick={() => setShowAdminLinks(false)}
-              className="text-[11px] text-pink-400 hover:text-white"
-            >
-              Close
-            </button>
-          </div>
-
-          <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-            {groups.map((g) => (
-              <div
-                key={`admin-${g.id}`}
-                className="p-2.5 rounded-xl bg-black/70 border border-pink-950/60 space-y-1.5"
-              >
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-bold text-pink-100">{g.name} (£{g.price})</span>
-                  {editingGroupId === g.id ? (
-                    <button
-                      onClick={() => setEditingGroupId(null)}
-                      className="text-[10px] text-pink-400"
-                    >
-                      Cancel
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        setEditingGroupId(g.id);
-                        setCustomLinkInput(g.inviteLink || "");
-                      }}
-                      className="text-[10px] text-pink-300 hover:text-white underline font-semibold"
-                    >
-                      Edit Link
-                    </button>
-                  )}
-                </div>
-
-                {editingGroupId === g.id ? (
-                  <div className="flex items-center gap-1.5 pt-1">
-                    <input
-                      type="text"
-                      value={customLinkInput}
-                      onChange={(e) => setCustomLinkInput(e.target.value)}
-                      placeholder="https://t.me/+YourPrivateLink"
-                      className="flex-1 bg-black border border-pink-500/40 rounded-lg px-2.5 py-1 text-xs text-white placeholder-pink-900 focus:outline-none"
-                    />
-                    <button
-                      onClick={() => handleSaveCustomLink(g.id)}
-                      disabled={isSavingLink}
-                      className="px-2.5 py-1 bg-pink-500 hover:bg-pink-400 text-white rounded-lg text-xs font-bold disabled:opacity-50"
-                    >
-                      {isSavingLink ? "..." : "Save"}
-                    </button>
-                  </div>
-                ) : (
-                  <p className="text-[11px] font-mono text-pink-400/80 truncate">
-                    {g.inviteLink || "https://t.me/..."}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Groups Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {/* ALL GROUPS RENDERED AS WIDE HIGH-CONTRAST HORIZONTAL RECTANGLES */}
+      <div className="grid grid-cols-1 gap-4">
         {filteredGroups.map((group) => {
+          const theme = getGroupTheme(group.id);
           const isMaster = group.id === "all-groups";
-          const isBallerBundle = group.id === "baller-bundle";
           const isPurchased = group.isPurchased;
           const isProcessing = purchasingGroupId === group.id;
 
           return (
             <div
               key={group.id}
-              className={`relative rounded-2xl p-4 transition-all duration-300 overflow-hidden flex flex-col justify-between ${
-                isMaster
-                  ? "sm:col-span-2 bg-gradient-to-br from-[#120220] via-[#1a0429] to-[#0a0115] border-2 border-pink-500/60 shadow-[0_0_30px_rgba(255,46,147,0.3)]"
-                  : isBallerBundle
-                  ? "bg-[#0c0218]/90 border border-fuchsia-500/40 shadow-[0_0_20px_rgba(217,70,239,0.15)]"
-                  : "bg-[#080210]/90 border border-pink-500/25 hover:border-pink-500/45 shadow-[0_4px_15px_rgba(0,0,0,0.3)]"
-              }`}
+              className={`relative rounded-3xl p-4 sm:p-5 transition-all duration-300 overflow-hidden border-2 ${theme.borderColor} ${theme.shadowColor} ${theme.cardBg} group hover:scale-[1.008]`}
             >
-              {/* Subtle ambient light in card */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-pink-600/10 rounded-full blur-2xl pointer-events-none" />
+              {/* Rich Visual Thematic Backdrop Pattern */}
+              {theme.overlayPattern}
 
-              <div>
-                {/* Top Badge & Tag Row */}
-                <div className="flex items-center justify-between gap-2 mb-2 relative z-10">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {group.tag && (
-                      <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-pink-500 text-white shadow-[0_0_8px_rgba(255,46,147,0.6)]">
-                        {group.tag}
-                      </span>
-                    )}
-                    {isPurchased && (
-                      <span className="text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-950 border border-emerald-500/50 text-emerald-300 flex items-center gap-1">
-                        <CheckCircle2 className="w-2.5 h-2.5" />
-                        Unlocked
-                      </span>
-                    )}
-                  </div>
+              {/* Ambient Thematic Colored Flare */}
+              <div className={`absolute top-0 right-0 w-44 h-44 rounded-full blur-3xl pointer-events-none ${theme.ambientLight}`} />
 
-                  {/* Price Tag */}
-                  <div className="text-right">
-                    <span className="text-xl font-black font-mono text-white tracking-tight drop-shadow-[0_0_10px_rgba(255,46,147,0.5)]">
-                      £{group.price}
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                {/* Left/Main Information Section */}
+                <div className="space-y-2.5 flex-1 min-w-0">
+                  {/* Top Badges Row */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`text-[10px] font-black uppercase tracking-wider px-3 py-1 rounded-full shadow-md flex items-center gap-1.5 ${theme.accentBadgeBg}`}>
+                      <span>{theme.flag}</span>
+                      <span>{theme.badgeLabel}</span>
                     </span>
-                    <span className="text-[10px] text-pink-400 font-bold ml-1">GBP</span>
-                  </div>
-                </div>
 
-                {/* Group Name & Description */}
-                <div className="relative z-10 mb-3">
-                  <h3 className="text-base font-extrabold text-white tracking-wide">
-                    {group.name}
-                  </h3>
-                  <p className="text-xs text-pink-200/70 line-clamp-2 mt-0.5">
-                    {group.description}
-                  </p>
-                </div>
-              </div>
-
-              {/* Action Area: If Unlocked, show instant link; If Locked, show purchase options */}
-              <div className="relative z-10 pt-2 border-t border-pink-900/30 space-y-2">
-                {isPurchased ? (
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-[11px] text-emerald-300 font-semibold px-1">
-                      <span className="flex items-center gap-1">
-                        <Zap className="w-3 h-3 text-emerald-400" />
-                        Instant VIP Access Link
+                    {isPurchased && (
+                      <span className="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-full bg-emerald-900 border-2 border-emerald-400 text-white flex items-center gap-1 shadow-[0_0_15px_rgba(16,185,129,0.5)]">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-300" />
+                        Unlocked & Active
                       </span>
-                      <span className="text-pink-300/70">Available Now</span>
-                    </div>
+                    )}
 
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => {
-                          triggerHaptic("success");
-                          if (group.inviteLink) {
-                            openUrl(group.inviteLink);
-                          }
-                        }}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-[0_0_15px_rgba(16,185,129,0.35)] active:scale-[0.98] transition-all cursor-pointer"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        <span>Join Group</span>
-                      </button>
+                    <span className="text-[10px] font-bold text-white/80 bg-black/60 px-2 py-0.5 rounded-lg border border-white/10 flex items-center gap-1">
+                      <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                      Instant Invite
+                    </span>
+                  </div>
 
-                      <button
-                        onClick={() => handleCopyLink(group.id, group.inviteLink || "")}
-                        className="p-2.5 rounded-xl bg-black/80 hover:bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 font-bold text-xs transition-all active:scale-95 cursor-pointer"
-                        title="Copy Link"
+                  {/* Title & Description */}
+                  <div>
+                    <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+                      <span className="text-2xl drop-shadow-md">{theme.flag}</span>
+                      <span>{group.name}</span>
+                    </h3>
+                    <p className="text-xs sm:text-sm text-pink-100 font-medium mt-1 leading-relaxed">
+                      {group.description}
+                    </p>
+                  </div>
+
+                  {/* Perks Pills Grid */}
+                  <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                    {theme.perks.map((perk, pIdx) => (
+                      <span
+                        key={pIdx}
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-black/50 border border-white/15 text-white/90 flex items-center gap-1"
                       >
-                        {copiedGroupId === group.id ? (
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                        ) : (
-                          <Copy className="w-3.5 h-3.5" />
-                        )}
-                      </button>
+                        <span className="text-yellow-400 font-bold">✓</span>
+                        <span>{perk}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Right / Pricing & Action Section */}
+                <div className="md:w-64 flex-shrink-0 flex flex-col justify-center space-y-3 pt-3 md:pt-0 border-t md:border-t-0 md:border-l border-white/15 md:pl-5">
+                  {/* Price Tag with High Contrast */}
+                  <div className="flex md:flex-col items-center md:items-end justify-between md:justify-center gap-1">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-pink-200">
+                      Lifetime Access Price
+                    </span>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-black font-mono text-white tracking-tight drop-shadow-[0_0_12px_rgba(255,255,255,0.6)]">
+                        £{group.price}
+                      </span>
+                      <span className="text-xs font-black text-yellow-300 font-mono">
+                        GBP
+                      </span>
                     </div>
                   </div>
-                ) : (
-                  <div className="space-y-1.5">
-                    {/* Primary Button: Buy with Wallet Balance or Direct Stripe */}
-                    {balance >= group.price ? (
+
+                  {/* Action Button: Instant Join or Purchase */}
+                  <div>
+                    {isPurchased ? (
+                      <div className="space-y-1.5">
+                        <button
+                          onClick={() => {
+                            triggerHaptic("success");
+                            if (group.inviteLink) {
+                              openUrl(group.inviteLink);
+                            }
+                          }}
+                          className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-green-500 hover:from-emerald-400 hover:to-teal-400 text-white font-black text-xs uppercase tracking-wider shadow-[0_0_25px_rgba(16,185,129,0.5)] active:scale-[0.98] transition-all cursor-pointer"
+                        >
+                          <ExternalLink className="w-4 h-4" />
+                          <span>Join on Telegram ↗</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleCopyLink(group.id, group.inviteLink || "")}
+                          className="w-full py-1.5 px-3 rounded-xl bg-black/80 hover:bg-emerald-950/70 border border-emerald-500/50 text-emerald-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                        >
+                          {copiedGroupId === group.id ? (
+                            <>
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                              <span>Invite Link Copied!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5" />
+                              <span>Copy Invite Link</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    ) : balance >= group.price ? (
                       <button
                         onClick={() => handlePurchaseWithBalance(group)}
                         disabled={isProcessing}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-gradient-to-r from-pink-500 via-rose-500 to-fuchsia-600 hover:from-pink-400 hover:to-fuchsia-500 text-white font-extrabold text-xs shadow-[0_0_20px_rgba(255,46,147,0.35)] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+                        className={`w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl font-black text-xs uppercase tracking-wider active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 ${theme.buttonBg}`}
                       >
                         {isProcessing ? (
                           <>
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            <span>Unlocking...</span>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Unlocking VIP...</span>
                           </>
                         ) : (
                           <>
-                            <Zap className="w-3.5 h-3.5" />
+                            <Zap className="w-4 h-4" />
                             <span>Unlock with Balance (£{group.price})</span>
                           </>
                         )}
                       </button>
                     ) : (
-                      <div className="grid grid-cols-2 gap-1.5">
+                      <div className="space-y-1.5">
                         <button
                           onClick={() => handleDirectStripeGroupCheckout(group)}
                           disabled={isProcessing}
-                          className="flex items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-400 hover:to-rose-500 text-white font-bold text-xs shadow-[0_0_15px_rgba(255,46,147,0.3)] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 text-center"
+                          className="w-full flex items-center justify-center gap-2 py-3 px-3 rounded-xl bg-gradient-to-r from-pink-500 via-rose-500 to-fuchsia-600 hover:from-pink-400 hover:to-rose-400 text-white font-black text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(236,72,153,0.4)] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
                         >
-                          <CreditCard className="w-3 h-3 flex-shrink-0" />
-                          <span className="truncate">Stripe (£{group.price})</span>
+                          <CreditCard className="w-4 h-4 flex-shrink-0" />
+                          <span>Stripe Checkout (£{group.price})</span>
                         </button>
 
                         <button
                           onClick={onOpenDeposit}
-                          className="flex items-center justify-center gap-1 py-2.5 px-2 rounded-xl bg-black/80 hover:bg-pink-950/60 border border-pink-500/30 text-pink-200 font-bold text-xs transition-all active:scale-[0.98] cursor-pointer text-center"
+                          className="w-full py-1.5 px-3 rounded-xl bg-black/80 hover:bg-pink-950/70 border border-pink-500/50 text-pink-200 font-bold text-xs transition-all active:scale-[0.98] cursor-pointer text-center"
                         >
-                          <span>Deposit First</span>
+                          <span>Top Up Wallet</span>
                         </button>
                       </div>
                     )}
                   </div>
-                )}
+                </div>
               </div>
             </div>
           );
         })}
       </div>
 
+      {filteredGroups.length === 0 && (
+        <div className="p-8 text-center bg-[#090014]/60 border border-pink-950/60 rounded-3xl space-y-2">
+          <p className="text-pink-300/70 text-xs">No groups match your current filter.</p>
+          <button
+            onClick={() => {
+              setSearchQuery("");
+              setCategoryFilter("all");
+            }}
+            className="text-pink-400 font-bold text-xs hover:underline cursor-pointer"
+          >
+            Clear filters
+          </button>
+        </div>
+      )}
+
       {/* Success Modal for freshly unlocked group */}
       {successModalGroup && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
-          <div className="w-full max-w-sm bg-[#0a0115] border-2 border-emerald-500/50 rounded-3xl p-6 text-center space-y-4 shadow-[0_0_50px_rgba(16,185,129,0.3)] relative">
-            <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-950/80 border border-emerald-500/50 flex items-center justify-center text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.4)]">
-              <Sparkles className="w-7 h-7 animate-pulse" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-sm bg-[#0a0115] border-2 border-emerald-500/60 rounded-3xl p-6 text-center space-y-4 shadow-[0_0_60px_rgba(16,185,129,0.35)] relative">
+            <div className="w-14 h-14 mx-auto rounded-2xl bg-emerald-950/90 border border-emerald-500/50 flex items-center justify-center text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.4)]">
+              <Sparkles className="w-7 h-7 animate-pulse text-emerald-300" />
             </div>
 
             <div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
-                Purchase Confirmed
+              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 px-2.5 py-0.5 rounded-full bg-emerald-950 border border-emerald-500/40">
+                VIP Access Unlocked
               </span>
-              <h3 className="text-lg font-black text-white mt-1">
-                {successModalGroup.group.name} Unlocked!
+              <h3 className="text-xl font-black text-white mt-1.5">
+                {successModalGroup.group.name}
               </h3>
               <p className="text-xs text-pink-200/80 mt-1">
-                Your VIP invite link is ready. Click below to join the Telegram group immediately.
+                Your private Telegram invite link is generated and ready to join!
               </p>
             </div>
 
-            {/* Link Container */}
-            <div className="p-3 rounded-xl bg-black/80 border border-emerald-500/30 text-left space-y-1">
-              <span className="text-[10px] font-bold text-emerald-400 block">Your Private Invite Link:</span>
+            {/* Link Box */}
+            <div className="p-3.5 rounded-2xl bg-black/90 border border-emerald-500/40 text-left space-y-1">
+              <span className="text-[10px] font-extrabold uppercase text-emerald-400 block tracking-wider">
+                Private Telegram Invite Link:
+              </span>
               <p className="text-xs font-mono text-emerald-200 break-all select-all">
                 {successModalGroup.link}
               </p>
@@ -461,75 +456,28 @@ export const GroupStore: React.FC<GroupStoreProps> = ({
                   triggerHaptic("success");
                   openUrl(successModalGroup.link);
                 }}
-                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-extrabold text-sm shadow-[0_0_25px_rgba(16,185,129,0.4)] active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2"
+                className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-black text-sm shadow-[0_0_25px_rgba(16,185,129,0.45)] flex items-center justify-center gap-2 active:scale-95 transition-all cursor-pointer"
               >
                 <ExternalLink className="w-4 h-4" />
-                <span>Join Group on Telegram</span>
+                <span>Join Group on Telegram ↗</span>
               </button>
 
-              <button
-                onClick={() => handleCopyLink(successModalGroup.group.id, successModalGroup.link)}
-                className="w-full py-2.5 px-4 rounded-xl bg-black/70 hover:bg-emerald-950/50 border border-emerald-500/40 text-emerald-300 font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-              >
-                <Copy className="w-3.5 h-3.5" />
-                <span>
-                  {copiedGroupId === successModalGroup.group.id ? "Link Copied!" : "Copy Link"}
-                </span>
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleCopyLink(successModalGroup.group.id, successModalGroup.link)}
+                  className="flex-1 py-2 px-3 rounded-xl bg-black border border-pink-500/30 hover:border-pink-500/60 text-pink-200 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copy Link</span>
+                </button>
 
-              <button
-                onClick={() => setSuccessModalGroup(null)}
-                className="text-xs text-pink-400/80 hover:text-white pt-1 block mx-auto cursor-pointer"
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Stripe Payment Redirect Modal (Fallback if automatic pop-up was blocked) */}
-      {activeStripeRedirect && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-          <div
-            className="w-full max-w-sm bg-[#090212] border border-pink-500/40 rounded-3xl p-6 shadow-[0_0_50px_rgba(255,46,147,0.35)] text-center space-y-4 relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-pink-600 via-rose-500 to-fuchsia-600 flex items-center justify-center mx-auto text-white shadow-[0_0_20px_rgba(255,46,147,0.5)]">
-              <CreditCard className="w-7 h-7" />
-            </div>
-
-            <div>
-              <h3 className="text-base font-extrabold text-white">
-                Stripe Payment Ready
-              </h3>
-              <p className="text-xs text-pink-200/80 mt-1">
-                {activeStripeRedirect.group.name} (£{activeStripeRedirect.group.price.toFixed(2)})
-              </p>
-            </div>
-
-            <p className="text-xs text-pink-300/70">
-              Your secure Stripe session is open. Tap the button below if your browser did not redirect automatically:
-            </p>
-
-            <div className="space-y-2 pt-1">
-              <a
-                href={activeStripeRedirect.checkoutUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => triggerHaptic("light")}
-                className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-pink-500 via-rose-500 to-fuchsia-600 hover:from-pink-400 text-white font-extrabold text-sm shadow-[0_0_25px_rgba(255,46,147,0.45)] transition-all cursor-pointer flex items-center justify-center gap-2"
-              >
-                <ExternalLink className="w-4 h-4" />
-                <span>Continue to Stripe Checkout ↗</span>
-              </a>
-
-              <button
-                onClick={() => setActiveStripeRedirect(null)}
-                className="text-xs text-pink-400/80 hover:text-white pt-1 block mx-auto cursor-pointer"
-              >
-                Close
-              </button>
+                <button
+                  onClick={() => setSuccessModalGroup(null)}
+                  className="py-2 px-4 rounded-xl bg-pink-950/60 hover:bg-pink-900/60 text-pink-300 font-bold text-xs transition-colors cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
             </div>
           </div>
         </div>

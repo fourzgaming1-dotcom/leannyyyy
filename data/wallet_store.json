@@ -2,26 +2,176 @@
   "wallets": {
     "100001": {
       "telegramId": 100001,
+      "username": "vip_member",
+      "firstName": "VIP Member",
+      "balance": 0,
+      "currency": "GBP",
+      "createdAt": "2026-09-20T19:11:35.293Z",
+      "updatedAt": "2026-09-24T17:51:18.218Z",
+      "transactions": [],
+      "purchasedGroups": [
+        "chav"
+      ]
+    },
+    "100002": {
+      "telegramId": 100002,
       "username": "",
       "firstName": "Telegram User",
       "balance": 0,
       "currency": "GBP",
-      "createdAt": "2026-09-20T19:11:35.293Z",
-      "updatedAt": "2026-09-20T19:11:35.293Z",
+      "createdAt": "2026-09-25T11:10:13.561Z",
+      "updatedAt": "2026-09-25T11:10:24.121Z",
+      "transactions": [],
+      "purchasedGroups": [
+        "baller-group"
+      ]
+    },
+    "12345678": {
+      "telegramId": 12345678,
+      "username": "",
+      "firstName": "Telegram User",
+      "balance": 0,
+      "currency": "GBP",
+      "createdAt": "2026-09-23T18:01:15.433Z",
+      "updatedAt": "2026-09-23T18:01:15.433Z",
+      "transactions": []
+    },
+    "123456789": {
+      "telegramId": 123456789,
+      "username": "",
+      "firstName": "Telegram User",
+      "balance": 0,
+      "currency": "GBP",
+      "createdAt": "2026-09-23T18:15:56.753Z",
+      "updatedAt": "2026-09-23T18:15:58.498Z",
       "transactions": []
     }
   },
-  "processedSessions": {},
-  "groupLinks": {
-    "all-groups": "https://t.me/+AllGroupsMasterVIP",
-    "baller-bundle": "https://t.me/+BallerBundleVIP",
-    "ebony": "https://t.me/+EbonyVIPAccess",
-    "chav": "https://t.me/+ChavVIPAccess",
-    "desi": "https://t.me/+DesiVIPAccess",
-    "british": "https://t.me/+BritishVIPAccess",
-    "scottish": "https://t.me/+ScottishVIPAccess",
-    "irish": "https://t.me/+IrishVIPAccess",
-    "baller-group": "https://t.me/+BallerGroupAccess"
+  "processedSessions": {
+    "game_1790186475433": true,
+    "game_1790186832549": true,
+    "game_1790186863579": true,
+    "spin_win_1790187346424": true,
+    "test_credit_1790187358479": true,
+    "roulette_win_1790187358498": true,
+    "crossy_run_1790271261253_1": true,
+    "crossy_run_1790271271446_1": true,
+    "crossy_run_1790271271446_2": true,
+    "crossy_run_1790271275368_1": true,
+    "crossy_run_1790271701572_1": true,
+    "crossy_run_1790271701572_2": true,
+    "crossy_run_1790271701572_3": true,
+    "crossy_run_1790271707166_1": true,
+    "crossy_run_1790271707166_2": true,
+    "crossy_run_1790271710598_1": true,
+    "crossy_run_1790271710598_2": true,
+    "crossy_run_1790271710598_3": true,
+    "crossy_run_1790271710598_4": true,
+    "crossy_run_1790271716130_1": true,
+    "crossy_run_1790271716130_2": true,
+    "crossy_run_1790271716130_3": true,
+    "crossy_run_1790271716130_4": true,
+    "crossy_run_1790271720801_1": true,
+    "crossy_run_1790271720801_2": true,
+    "crossy_run_1790271720801_3": true,
+    "crossy_run_1790271720801_4": true,
+    "crossy_run_1790271728440_1": true,
+    "crossy_run_1790271728440_2": true,
+    "crossy_run_1790271728440_3": true,
+    "crossy_run_1790271728440_4": true,
+    "crossy_run_1790271728440_5": true,
+    "crossy_run_1790271728440_6": true,
+    "crossy_run_1790271728440_7": true,
+    "crossy_run_1790271728440_8": true,
+    "crossy_run_1790271751201_1": true,
+    "crossy_run_1790271751201_2": true,
+    "crossy_run_1790271751201_3": true,
+    "crossy_run_1790271751201_4": true,
+    "crossy_run_1790271833434_1": true,
+    "crossy_run_1790271833434_2": true,
+    "crossy_run_1790271833434_3": true,
+    "crossy_run_1790271833434_4": true,
+    "crossy_run_1790271833434_5": true,
+    "crossy_run_1790271833434_6": true,
+    "crossy_run_1790271844060_1": true,
+    "crossy_run_1790271844060_2": true,
+    "crossy_run_1790271846183_1": true,
+    "crossy_run_1790271846183_2": true,
+    "crossy_cashout_test_run_1790272278176": true,
+    "crossy_cashout_run_1790334613612": true,
+    "bonus_credit_1790334624101": true
   },
-  "userPurchases": {}
+  "groupLinks": {
+    "all-groups": "https://t.me/AllGroupsMasterVIP",
+    "baller-bundle": "https://t.me/BallerBundleVIP",
+    "ebony": "https://t.me/EbonyVIPAccess",
+    "chav": "https://t.me/ChavVIPAccess",
+    "desi": "https://t.me/DesiVIPAccess",
+    "british": "https://t.me/BritishVIPAccess",
+    "scottish": "https://t.me/ScottishVIPAccess",
+    "irish": "https://t.me/IrishVIPAccess",
+    "baller-group": "https://t.me/BallerGroupAccess"
+  },
+  "userPurchases": {
+    "100001": [
+      "chav"
+    ],
+    "100002": [
+      "baller-group"
+    ]
+  },
+  "crossyRuns": {
+    "100002": {
+      "run_1790334613571": [
+        1
+      ],
+      "run_1790334613577": [
+        2
+      ],
+      "run_1790334613583": [
+        3
+      ],
+      "run_1790334613587": [
+        4
+      ],
+      "run_1790334613592": [
+        10
+      ]
+    }
+  },
+  "crossyCashedOutRuns": {
+    "100002": {
+      "run_1790334613612": {
+        "step": 10,
+        "amount": 0.58,
+        "timestamp": "2026-09-25T11:10:13.612Z"
+      }
+    }
+  },
+  "crossyStats": {
+    "100001": {
+      "highScoreLane": 8,
+      "totalEarnings": 0,
+      "totalRuns": 2
+    },
+    "100002": {
+      "highScoreLane": 10,
+      "totalEarnings": 0.58,
+      "totalRuns": 2
+    }
+  },
+  "gameStats": {
+    "100001": {
+      "lastSpin": "2026-09-23T18:15:46.425Z",
+      "spinsLeft": 0,
+      "totalWon": 10.05,
+      "totalSpins": 3,
+      "totalXp": 50
+    },
+    "12345678": {
+      "lastSpin": "",
+      "spinsLeft": 3,
+      "totalWon": 5
+    }
+  }
 }
