@@ -55,6 +55,251 @@
       "createdAt": "2026-09-23T18:15:56.753Z",
       "updatedAt": "2026-09-23T18:15:58.498Z",
       "transactions": []
+    },
+    "8570354008": {
+      "telegramId": 8570354008,
+      "username": "imbashing",
+      "firstName": "Four Zino",
+      "balance": 10,
+      "currency": "GBP",
+      "createdAt": "2026-09-28T14:28:19.081Z",
+      "updatedAt": "2026-09-28T14:28:19.088Z",
+      "transactions": [
+        {
+          "id": "tx_stripe_cs_live_a1FDmzYfKQTZhxZaBZBChO4xiMZ75525aWJlFl2W7yvcfTl3dvbD7i7YFE",
+          "telegramId": 8570354008,
+          "type": "purchase",
+          "amount": -10,
+          "currency": "GBP",
+          "status": "completed",
+          "description": "Stripe Direct Purchase: Asian VIP",
+          "createdAt": "2026-09-28T14:28:19.088Z",
+          "stripePaymentIntentId": "pi_3UKarPLdtMCPDpz73dpbfb1M"
+        },
+        {
+          "id": "tx_1790605699086_f8uwy",
+          "telegramId": 8570354008,
+          "type": "deposit",
+          "amount": 10,
+          "currency": "GBP",
+          "status": "completed",
+          "stripeSessionId": "cs_live_a1RwB87z5g5vly4UX1vPqOkaXaN1stTsewdsXbUwJHINOrM361eVTreiBT",
+          "stripePaymentIntentId": "pi_3UKasiLdtMCPDpz70RWmOBVn",
+          "description": "Stripe Card / Apple Pay Deposit",
+          "createdAt": "2026-09-28T14:28:19.086Z"
+        },
+        {
+          "id": "tx_stripe_cs_live_a1Mbq67jjVu8AQ7gO0YdyvNRvnK88mejXKnlkgY2vSdkrGdxM9S4Vx1UOt",
+          "telegramId": 8570354008,
+          "type": "purchase",
+          "amount": -10,
+          "currency": "GBP",
+          "status": "completed",
+          "description": "Stripe Direct Purchase: British VIP",
+          "createdAt": "2026-09-28T14:28:19.085Z",
+          "stripePaymentIntentId": "pi_3UKb3SLdtMCPDpz73RXle4g8"
+        },
+        {
+          "id": "tx_stripe_cs_live_a1iQyjC7W4WVKQp4Hxif5OPqpmauPN8DME5zck19bhK2EqkTz8Tgo83UFX",
+          "telegramId": 8570354008,
+          "type": "purchase",
+          "amount": -5,
+          "currency": "GBP",
+          "status": "completed",
+          "description": "Stripe Direct Purchase: chat",
+          "createdAt": "2026-09-28T14:28:19.082Z",
+          "stripePaymentIntentId": "pi_3UKbVNLdtMCPDpz708nBUCFC"
+        }
+      ],
+      "purchasedGroups": [
+        "british",
+        "asian"
+      ]
+    },
+    "8974413851": {
+      "telegramId": 8974413851,
+      "username": "",
+      "firstName": "Rak Lim",
+      "balance": 0,
+      "currency": "GBP",
+      "createdAt": "2026-09-28T14:28:19.088Z",
+      "updatedAt": "2026-09-28T14:28:19.089Z",
+      "transactions": [
+        {
+          "id": "tx_stripe_cs_live_a1H1eykhHoeYbK3GHbwondOkp35KPVkdy2kLAodsq2MJsrk1u77T3rlEVz",
+          "telegramId": 8974413851,
+          "type": "purchase",
+          "amount": -20,
+          "currency": "GBP",
+          "status": "completed",
+          "description": "Stripe Direct Purchase: All Groups Access",
+          "createdAt": "2026-09-28T14:28:19.089Z",
+          "stripePaymentIntentId": "pi_3UKYpQLdtMCPDpz72Iyj2GGs"
+        }
+      ],
+      "purchasedGroups": [
+        "all-groups",
+        "baller-bundle",
+        "ebony",
+        "chav",
+        "asian",
+        "british",
+        "scottish",
+        "irish",
+        "baller-group"
+      ]
+    },
+    "8745399939": {
+      "telegramId": 8745399939,
+      "username": "",
+      "firstName": "Levi Tasker",
+      "balance": 0,
+      "currency": "GBP",
+      "createdAt": "2026-09-28T14:28:19.089Z",
+      "updatedAt": "2026-09-28T14:28:19.089Z",
+      "transactions": [
+        {
+          "id": "tx_stripe_cs_live_a16wnbj7OIHScDFmS9o6AWcIGdHI9kU1oDeFsRbqglZnKYZkeCtTbQ1WQU",
+          "telegramId": 8745399939,
+          "type": "purchase",
+          "amount": -15,
+          "currency": "GBP",
+          "status": "completed",
+          "description": "Stripe Direct Purchase: signals",
+          "createdAt": "2026-09-28T14:28:19.089Z",
+          "stripePaymentIntentId": "pi_3UKEkTLdtMCPDpz72rptr7Vu"
+        }
+      ]
+    },
+    "5609671034": {
+      "telegramId": 5609671034,
+      "username": "roarym",
+      "firstName": "Rory MacDonald",
+      "balance": 20,
+      "currency": "GBP",
+      "createdAt": "2026-09-28T14:28:19.090Z",
+      "updatedAt": "2026-09-28T14:28:19.092Z",
+      "transactions": [
+        {
+          "id": "tx_stripe_cs_live_a1LnwNG5hh0IU1jNsSlLOAaFxktfdamXadAR3yc31lcoLvdRoJ9MBxgNCj",
+          "telegramId": 5609671034,
+          "type": "purchase",
+          "amount": -20,
+          "currency": "GBP",
+          "status": "completed",
+          "description": "Stripe Direct Purchase: All Groups Access",
+          "createdAt": "2026-09-28T14:28:19.092Z",
+          "stripePaymentIntentId": "pi_3UK8jmLdtMCPDpz71QloX96a"
+        },
+        {
+          "id": "tx_1790605699090_e2xls",
+          "telegramId": 5609671034,
+          "type": "deposit",
+          "amount": 20,
+          "currency": "GBP",
+          "status": "completed",
+          "stripeSessionId": "cs_live_a1grojKDwB3lMvHoPUoNkvfc2ZNq9CfXzf2t7DFfdDBiNQgbwb1q5IDPZ1",
+          "stripePaymentIntentId": "pi_3UK9kJLdtMCPDpz730gHjBfK",
+          "description": "Stripe Card / Apple Pay Deposit",
+          "createdAt": "2026-09-28T14:28:19.090Z"
+        }
+      ],
+      "purchasedGroups": [
+        "all-groups",
+        "baller-bundle",
+        "ebony",
+        "chav",
+        "asian",
+        "british",
+        "scottish",
+        "irish",
+        "baller-group"
+      ]
+    },
+    "8036579335": {
+      "telegramId": 8036579335,
+      "username": "trapkeqd",
+      "firstName": "72",
+      "balance": 3,
+      "currency": "GBP",
+      "createdAt": "2026-09-28T14:28:19.092Z",
+      "updatedAt": "2026-09-28T14:28:19.094Z",
+      "transactions": [
+        {
+          "id": "tx_1790605699094_fuil0",
+          "telegramId": 8036579335,
+          "type": "deposit",
+          "amount": 1,
+          "currency": "GBP",
+          "status": "completed",
+          "stripeSessionId": "cs_live_a1EaUMFQ64V749u9PKAgP29f55WbBATkczwYmBqVDfuL21G6Jl505aNjtv",
+          "stripePaymentIntentId": "pi_3UK5R1LdtMCPDpz72mxF8eZi",
+          "description": "Stripe Card / Apple Pay Deposit",
+          "createdAt": "2026-09-28T14:28:19.094Z"
+        },
+        {
+          "id": "tx_1790605699093_hnzmc",
+          "telegramId": 8036579335,
+          "type": "deposit",
+          "amount": 2,
+          "currency": "GBP",
+          "status": "completed",
+          "stripeSessionId": "cs_live_a17KneGk42Cvv79i3hlazFGoo90sawzOgKfvBwK4qYnXTU1SJBrIf6rBa2",
+          "stripePaymentIntentId": "pi_3UK5StLdtMCPDpz73Ad0RTO9",
+          "description": "Stripe Card / Apple Pay Deposit",
+          "createdAt": "2026-09-28T14:28:19.093Z"
+        }
+      ]
+    },
+    "6308143672": {
+      "telegramId": 6308143672,
+      "username": "",
+      "firstName": "Humphrey luzinda",
+      "balance": 0,
+      "currency": "GBP",
+      "createdAt": "2026-09-28T14:28:19.095Z",
+      "updatedAt": "2026-09-28T14:28:19.097Z",
+      "transactions": [
+        {
+          "id": "tx_stripe_cs_live_a1SbO1AbeHUzz7ARtHsvOHOSjNEgioF2i4Us5nIsH1iQ1raJNkx1VMJGVE",
+          "telegramId": 6308143672,
+          "type": "purchase",
+          "amount": -10,
+          "currency": "GBP",
+          "status": "completed",
+          "description": "Stripe Direct Purchase: Ebony VIP",
+          "createdAt": "2026-09-28T14:28:19.097Z",
+          "stripePaymentIntentId": "pi_3UK38xLdtMCPDpz73q5z8UH5"
+        }
+      ],
+      "purchasedGroups": [
+        "ebony"
+      ]
+    },
+    "7872392906": {
+      "telegramId": 7872392906,
+      "username": "",
+      "firstName": "Ryan Nixon",
+      "balance": 0,
+      "currency": "GBP",
+      "createdAt": "2026-09-28T14:28:19.097Z",
+      "updatedAt": "2026-09-28T14:28:19.098Z",
+      "transactions": [
+        {
+          "id": "tx_stripe_cs_live_a1qxWVKpPOI7RYUYAzF1ICa9vJ6fCGKsTeqv4pebu8C7TRDP4MdQTddUlQ",
+          "telegramId": 7872392906,
+          "type": "purchase",
+          "amount": -10,
+          "currency": "GBP",
+          "status": "completed",
+          "description": "Stripe Direct Purchase: Scottish VIP",
+          "createdAt": "2026-09-28T14:28:19.098Z",
+          "stripePaymentIntentId": "pi_3UK0fLLdtMCPDpz711bds5qK"
+        }
+      ],
+      "purchasedGroups": [
+        "scottish"
+      ]
     }
   },
   "processedSessions": {
@@ -149,19 +394,126 @@
     "bonus_credit_1790499041198": true,
     "bonus_credit_1790499041200": true,
     "bonus_credit_1790499041203": true,
-    "bonus_credit_1790499041207": true
+    "bonus_credit_1790499041207": true,
+    "cs_live_a1iQyjC7W4WVKQp4Hxif5OPqpmauPN8DME5zck19bhK2EqkTz8Tgo83UFX": true,
+    "cs_live_a1Mbq67jjVu8AQ7gO0YdyvNRvnK88mejXKnlkgY2vSdkrGdxM9S4Vx1UOt": true,
+    "cs_live_a1RwB87z5g5vly4UX1vPqOkaXaN1stTsewdsXbUwJHINOrM361eVTreiBT": true,
+    "cs_live_a1FDmzYfKQTZhxZaBZBChO4xiMZ75525aWJlFl2W7yvcfTl3dvbD7i7YFE": true,
+    "cs_live_a1H1eykhHoeYbK3GHbwondOkp35KPVkdy2kLAodsq2MJsrk1u77T3rlEVz": true,
+    "cs_live_a16wnbj7OIHScDFmS9o6AWcIGdHI9kU1oDeFsRbqglZnKYZkeCtTbQ1WQU": true,
+    "cs_live_a1grojKDwB3lMvHoPUoNkvfc2ZNq9CfXzf2t7DFfdDBiNQgbwb1q5IDPZ1": true,
+    "cs_live_a1LnwNG5hh0IU1jNsSlLOAaFxktfdamXadAR3yc31lcoLvdRoJ9MBxgNCj": true,
+    "cs_live_a17KneGk42Cvv79i3hlazFGoo90sawzOgKfvBwK4qYnXTU1SJBrIf6rBa2": true,
+    "cs_live_a1EaUMFQ64V749u9PKAgP29f55WbBATkczwYmBqVDfuL21G6Jl505aNjtv": true,
+    "cs_live_a1SbO1AbeHUzz7ARtHsvOHOSjNEgioF2i4Us5nIsH1iQ1raJNkx1VMJGVE": true,
+    "cs_live_a1qxWVKpPOI7RYUYAzF1ICa9vJ6fCGKsTeqv4pebu8C7TRDP4MdQTddUlQ": true,
+    "cs_live_a1kHK5Suk1zDd4uvY82IppCngLUpqvUPupweSnMRhuwvgle7iUzFrQyb5Z": true,
+    "cs_live_a1YfuB8R2lJEOwvHurtNPMNrKDRFdMYMchJrp5oK7lwMBTt4DGalUZQDqs": true,
+    "cs_live_a1KxD7hbBjLBLd7oz2uhM7taRKlCnXKwj5pskBmSFGPucQcQrv2ShDwntT": true,
+    "cs_live_a1tQDTxr6NleLbF2J4iwyygze5YAnOFSVhMIgamxnuW8ZdErIU2L65Pwiv": true,
+    "cs_live_a1iduzQJXmbPoalseLv3DVA04ExARH1InAwwou4r0Abt0vu85lY96ueqZl": true,
+    "cs_live_a1Dar9StQfAIQPcPSKe4g7no1UtSnQRDoVVukWc540FqhtyvHAks90f27s": true,
+    "cs_live_a158YZ7mNy8ywTp6VkxBWTdLvMMSLBhXrivA3rJfGglZWg9RJxRmyUPz9X": true,
+    "cs_live_a1OQmaoXqD4YdTn1sq7u4eusaD20HVYsQlrE77TzYQi3LDSJIIno90hJu7": true,
+    "cs_live_a1XDNH6IhjpnOPjkjdxRianT03JKqU5qnQowX2fDvDCHcRDVV4D2biY3nm": true,
+    "cs_live_a1cznOwYyYdwnjml7Ji0kyWziWQWGBkFn9JApB4cQcV6v7m156lEiEsgqi": true,
+    "cs_live_a1AZhxwUE096Kms4QJ3j1OLVL6lNevDm4V7K7nVmnCfXuB4PHmp5Aasukw": true,
+    "cs_live_a1ymP7QfiyfrtxVX4Qo9UDkiJ6D8AftMjslbxy21qPJwkNWji4cdlLswWM": true,
+    "cs_live_a18ZpDzFuiE37Rxl88i2hsWAmcMP4OdZfJaDQ9A1tCcHr3YbZJH6QIbXcA": true,
+    "cs_live_a11KO9iZtlwfe6NLrjfcj8AszTqjdA3fggoY713V3IgpkkLXT3eUk8nb6s": true,
+    "cs_live_a1G3ovG5HAsTyiiEV8w4znT6z8T2Vab1nJFKE4KVRm2rpx2nc26JHNWusc": true,
+    "cs_live_a1hUASPC2lGAuKBgMzGmXqW0iHlbWffXpVkBDh0NBEuJKWxMwUAlI2AA6l": true,
+    "cs_live_a1jsVMmZVDa5AiA0nhNhqaQuDnKCjSUTTtYu7miycgFKHduVzxmHapq313": true,
+    "cs_live_a1oeAZD9nmMafkdq2OopMglpnP2IySRQWMs9IWIjnwcpsJ8pP7lO5v6YEa": true,
+    "cs_live_a11p17SwRgVpC9r1Vjw7fQwx7xNJwKlwMFPwSAY9abfKwVGdegh8sfFHy9": true,
+    "cs_live_a1S6aiHNnVbOsxf0kb4XH9wr7bUQsoHxeWZM4HMnogFE57yRVesudggAUN": true,
+    "cs_live_a1TbK0W7m96St28tEAuHUUW7chC3lyfXXwGxeF8gNF8JqTzoafnqOeKPKA": true,
+    "cs_live_a15kEG7vcYJFnaee8hxeyFvmyuaV9e9Lkm4TP1VcUvdy1IPhEUrCsb6rye": true,
+    "cs_live_a16PVuHzbsdprpUATwHvv8swtIG0XdRbk7iS5VQkFJDdZkAc5IehLuNkaz": true,
+    "cs_live_a1cBHpFxPV8ZLbfrY5Uip3xwzvRxBBVXFCCp7w20L1DPvYbslLDklRqaCw": true,
+    "cs_live_a1rcrMwWcfXwR3E0QUGFMSgNKA2v8Cgin3ljRpzc9aDL5XV8Jg9nQoWFPb": true,
+    "cs_live_a1IXCbtH5zC9Jy3m3gGtzUI6r9ZAMUdpBlaJUIuj0mNQuvm2r0tPRYwpaL": true,
+    "cs_live_a1fkbxpFMsjDLog8uafjMCibuMDXrg6TplcG9LxFTn39lAt06m3mJfs1Ed": true,
+    "cs_live_a10sfdM3cFdIFRsdVXheQWNcW1rdnabKQSWRqP8tbu2dWtY0GxMVTkHrSA": true,
+    "cs_live_a10FWoUMxn4sbkg04G5ZtzIM7Bzq16lGzqWUuRHj8sUvANbhTuYP4Ti3AJ": true,
+    "cs_live_a1DOVCnKQfQn2zEgO2Pi2ySJ6fjyR6j9ZZXJfJFkcvrkmmzQL53x1M3Tuz": true,
+    "cs_live_a14WFKq4kimu5kic6Pm1drByhs9nUJxUEIIzdEwNlSPfLuxP6E0SKOBj52": true,
+    "cs_live_a1fsk0Tueh2uAWI3qYFsfOq3dFestBXrnXKttRwtNHGrt5KSVECwlCsPej": true,
+    "cs_live_a1I25R1sBFlhx67dREcjT7ExD9tsPYdbnJ64w6ZLDkseTUSRnR2WA8gJ3B": true,
+    "cs_live_a1uX6tjDR4RW3ACKWcrAiYXftkrJk2NUjOVjU0J468nnz0aUldyVB0f9Cd": true,
+    "cs_live_a1lGWpqaSleR9DZZZNoTaoOXH0O6mchf2j7Cxt1hG9wWjUMNw6xPokXQvT": true,
+    "cs_live_a12YCp6mLpx631lDqUP1D2crmKdB11Iq0WoCwOcpjcny4hx9Jm7X6ujABd": true,
+    "cs_live_a10ikxifVPbynGOKQnNrzKJ6twlqBfoNSmh5htzOGviWOgkBFmppUVpdYg": true,
+    "cs_live_a1pl0kFFLNIH5HjSfj5fVYpVww1pdJuOiO7HzROSqHiBNAQoCSo4JiYRrC": true,
+    "cs_live_a1tDjbDxp9Ve0Hz0FwwkvyUSFJ4FSOf1Eyno8nJkps7e4oRXJzFqiULSyV": true,
+    "cs_live_a1cuv58Rqeddn603bjlDxPaoiXOdrVrCo0ZKcYVb3zkxwtYGhY11fNyWC0": true,
+    "cs_live_a1IWLKCy1QjMjqWkgXCTgdz65VCEVM2UX50fu3j8yptij64mpSldRdMpWG": true,
+    "cs_live_a1cwNwhww9AyaEgV3EkgYf30amPJRQNmi1v5XBlSz0yyjg3pigkOgICYuQ": true,
+    "cs_live_a1KTOiAn3xhDRJSrgU6hF1qlpeLi6vXkKcYU9FuxkLW4e9kXKcQDLPahBL": true,
+    "cs_live_a19xcVzR2NcUCGqG5wCcbBCvoV38ecASKoB0EWiuBGGmoyPzi9ym8ErQvd": true,
+    "cs_live_a1umqZlOPYdECx5cb0SKCkd3P8WCTilrreyTHZY5SKQx3zopn69Qf39GAK": true,
+    "cs_live_a1gwOJxVQbge3wcQh1MMUUt1y8UyaD0RsC4Tc2es7fvAdOidVhqMgVXHJZ": true,
+    "cs_live_a1L1ybk2bUvf7XdJ8Y9YCF7mxR4LUVrbV2vJAFGd5bm10xG7Di12SGpCwP": true,
+    "cs_live_a1nZ1XT0hU3jho7FSmp5bb57ObG6s6BPdQg1ENnou4yIWAZeb9zywzkWBg": true,
+    "cs_live_a1Km7NUxFb0fifY4zMA6xJwaTl1cpIY3dDgvnKuZtkssgoq7jaTuocc2un": true,
+    "cs_live_a1QxyFxEvfRSpRksSRuvHykiaklyUK0F6lxMQx5okqP5UIyHzJvsC3CNsF": true,
+    "cs_live_a156Pvm0cpk5A8H0VKvzgXO27eMAAfw1uz1dfKV6gPVZOPWoBeU7eotdtK": true,
+    "cs_live_a1zHEEJ8LDYuA7J8B7H0BXnjgp3FUcRixQ4fei22cYnvOunFCHNk7cC5h8": true,
+    "cs_live_a1y62dpt1n96PfOaIDlNbhiGjiW8lJVQq5pj6Ol8ET00tEC2TdnSPyoEIR": true,
+    "cs_live_a16caHtNnr0Jptx0vtvRF50nbZpicdvyyUiWGIcbCvRNmbPPv1drNfmNhF": true,
+    "cs_live_a1YGql3RDksQio80wJRGsbIoVTg9JtuUydefmcOws1bzQjYaM2DIVp0IgO": true,
+    "cs_live_a1Wm71EzbWYrPV0uIqV2iOhVsiOxCSJzSaX5sjOgNtZjUhupfNLGXgBeXO": true,
+    "cs_live_a1iEIWsiW65c9yWh5MFpBqND0YT0vhscbuk0v2OwBevlVyxct1BHDg8KZq": true,
+    "cs_live_a1rZeDUBaS1MzqutgEIOCuuHseubLfCxqpWjwglVBOvCwGJwgyWAtDU36Z": true,
+    "cs_live_a1fFJQsC3rlcTQllVIJFzPvg3OM1EtREfcNOClSkjwymZh4p1ul0OFpY14": true,
+    "cs_live_a1IWVJLIVR27mDhz1D9hWoZ29DnARLACdYX69JPdl1pDTOncj7BhPnneLI": true,
+    "cs_live_a1B5isl31ShOvSpyR0RlC7c8HiDrHu0mEt3ZY8xNSttGzCfBS33tpBSHhl": true,
+    "cs_live_a1qdeFy34OShftLsOF15hSE9fXMSyTqPZ26NGLRGnRmPpx7fv1z1vA4daA": true,
+    "cs_live_a18VVWAgOdQxkDOkk4Vl4vv3pcZhsPA5fXL5mRdCodpitsbUvNFfpM79Z4": true,
+    "cs_live_a1jD0y0Afw0IRTJI7Xae3mnlmtj6Wvc2tFcTGGycNpRL36aFTrZaU91Pa3": true,
+    "cs_live_a1Oy474cS3as1IItTQlHFjcxK1Ie9H6qYe9GIzYwSbglPIke3wvixXUncR": true,
+    "cs_live_a1riaVFyKT8FgUKqN2Fg0rZs0oYooKVzWRyZ00jpAhq3SXCyDhGNuKX39F": true,
+    "cs_live_a1YbJzYzWiUe7lBsmavYkkxgrVlwOoklrNSIB5xOPYwjbXVwGh1z9t3Jrq": true,
+    "cs_live_a1m6NR9RIm0TkPShcju049jaJEJX8IBLmXmlHA0fz8dkYBLBzhdLayDoTj": true,
+    "cs_live_a1anvLyqOAACteBIth8HZQncQH7x045cR8zsRKzFiG9sS8ApJT8eYmyi3a": true,
+    "cs_live_a1IRJg8K5blZL3UuzQ0OCUCMmtb6KpFNkxs6e7hvrmDuUAditaITSce61c": true,
+    "cs_live_a1OK7z5J43sqlH0Rl75uZYiQ3T9ADseGm8foViy1cNrSgqczU7UIQeYwFl": true,
+    "cs_live_a178mwL1zmxQ5nSpMG7jMYWt6POy261eSQ1iOqL0c29d2jmJjnCJ7v0mAB": true,
+    "cs_live_a1pQctDib9W79tefZlzGOX7xVRSv7HoJtDQR32QxwodoWssHWaW6e2cws4": true,
+    "cs_live_a1ipgKxnUbENiFR5AH8ABeRF5ciWMVOEuhwX7e6m4y8HGxAbiq8haeipUM": true,
+    "cs_live_a1pVN7Nz1AUQrQtUgVKqXDS4nAIpHmNM0wSPXCjwME9pZWh8aB7SVlTVWF": true,
+    "cs_live_a1dle2PljybBtr4vnLYPukUp3u9w2C29a3OSDtiHTT07HSA9GF57Z6SaPH": true,
+    "cs_live_a1Ht1QO5ur6JvdG2FHKRwJ2sJ23bkOd1Ze4scC348WYoKNlQeUIA4xYeYf": true,
+    "cs_live_a16f4bq7HI1uvTUxv606If6sLPdAsHlYz8An8z5y2hSWnow4NjiBfiRGoE": true,
+    "cs_live_a1bRyJwxAb7mCrg9nVkY0jbB5FENBtvtQcKLA3FPr50Ndk67HRYWkg8qMA": true,
+    "cs_live_a1ARwids7sgBhm6ErWhpzhdl7CvB9VpBhqmI0Hp8wknRHBQG3irqYRiwJ6": true,
+    "cs_live_a1f7XwXw3fr2fMQ06pQr8COx3loO3CjfXpIrSiFfcMvpeigsIFSiqZ5Zgq": true,
+    "cs_live_a16If0xVBvyH9gaqB0IS3ZukrtO2qjkEoE9VIoWh1dLgouq19TfQbraI1q": true,
+    "cs_live_a1pif4HBAmurC7LE7kwhOtpNBg8HSfw2icCHCSVpAmyCaQGaV03JH559ER": true,
+    "cs_live_a1EanKydfhxAYncbxJ3xrpPYuPX6FAr9n2GmgRndffViSOvF01m0xw3cge": true,
+    "cs_live_a1bDZExUyn8aQCqLJn0v9X97vDetIUrjyxcJ1XhjAyWjJJKcJtJ22ZfEnE": true,
+    "cs_live_a1D3eG6hXfesxP2uCtHS5gKR7JyHADvwCzrATsITCmNNuuCHQ3I5kqFy05": true,
+    "cs_live_a1X7bHDTSEXvAe0JSX6DDb0Df9t5LaP2dqzH4FeQHCu4AsMQplFMHLhHzL": true,
+    "cs_live_a1KoIEogMbsELktOzC6bImiB3WtfKHqteLuqf2KyxtSEo4EfQUWLYZD5ad": true,
+    "cs_live_a1ROLdPaebAxPjwzRNJdd3yzNOniSzWoM4annmyb1gQSO8r6XrPHI12tzn": true,
+    "cs_live_a1Sk2lSWMEB6nNEcgisTEq9IIHaYKzo32libH4JMjLAEylUSWohSrysNJz": true,
+    "cs_live_a1znz1DuOhI5KrOhgveJBf82hb8KE9ks6n656KLXbkTTAAEjEFu5fe1qTK": true,
+    "cs_live_a1bHJkSLSeEKiRCYunirA0oNgQSOITDR4u0aGJIjM8JjNLWLcgqOdpOV8P": true,
+    "cs_live_a1WKo03U427qDYdAPzyI7jGJ5rJotI7bHxPqbfpad0mkrIda4puvb1Ko7U": true
   },
   "groupLinks": {
+    "ebony": "https://t.me/+lQ2DnZj7KLoxNGFk",
+    "irish": "https://t.me/+8uct-Zt8z443Y2Fk",
+    "asian": "https://t.me/+mksHs4bdV3hmOWE0",
+    "scottish": "https://t.me/+viJcMgttgpI2NzNk",
+    "british": "https://t.me/+uV2_KyUDqZA0MTQ0",
+    "baller-group": "https://t.me/+PhngmOwUaZw4MmFk",
     "all-groups": "https://t.me/+-xdnbgG9fGEyNWE0",
     "baller-bundle": "https://t.me/addlist/r-kbWFRYsWBiMmJk",
-    "ebony": "https://t.me/+lQ2DnZj7KLoxNGFk",
     "chav": "https://t.me/ChavVIPAccess",
-    "asian": "https://t.me/+mksHs4bdV3hmOWE0",
-    "british": "https://t.me/+uV2_KyUDqZA0MTQ0",
-    "scottish": "https://t.me/+viJcMgttgpI2NzNk",
-    "irish": "https://t.me/+8uct-Zt8z443Y2Fk",
-    "baller-group": "https://t.me/+PhngmOwUaZw4MmFk",
-    "desi": "https://t.me/+mksHs4bdV3hmOWE0"
+    "desi": "https://t.me/+mksHs4bdV3hmOWE0",
+    "icloud-exclusives": "https://t.me/+Do2yEqwoUBhjMDI8",
+    "icloud": "https://t.me/+Do2yEqwoUBhjMDI8"
   },
   "userPurchases": {
     "100001": [
@@ -169,6 +521,38 @@
     ],
     "100002": [
       "baller-group"
+    ],
+    "8570354008": [
+      "british",
+      "asian"
+    ],
+    "8974413851": [
+      "all-groups",
+      "baller-bundle",
+      "ebony",
+      "chav",
+      "asian",
+      "british",
+      "scottish",
+      "irish",
+      "baller-group"
+    ],
+    "5609671034": [
+      "all-groups",
+      "baller-bundle",
+      "ebony",
+      "chav",
+      "asian",
+      "british",
+      "scottish",
+      "irish",
+      "baller-group"
+    ],
+    "6308143672": [
+      "ebony"
+    ],
+    "7872392906": [
+      "scottish"
     ]
   },
   "crossyRuns": {

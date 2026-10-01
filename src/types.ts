@@ -42,6 +42,7 @@ export interface GroupItem {
   tag?: string;
   isPurchased?: boolean;
   inviteLink?: string;
+  defaultLink?: string;
 }
 
 export interface GroupPurchaseResponse {
@@ -66,7 +67,30 @@ export interface CheckoutSessionResponse {
   error?: string;
 }
 
-export type NavTab = 'home' | 'bundles' | 'groups' | 'game' | 'wallet';
+export type NavTab = 'home' | 'bundles' | 'groups' | 'game' | 'music' | 'wallet';
+
+export interface DeezerTrack {
+  id: number;
+  title: string;
+  title_short?: string;
+  artist: {
+    id: number;
+    name: string;
+    picture_medium?: string;
+  };
+  album: {
+    id: number;
+    title: string;
+    cover_small?: string;
+    cover_medium?: string;
+    cover_big?: string;
+  };
+  preview: string;
+  duration: number;
+  link?: string;
+  youtubeId?: string;
+  isFullSong?: boolean;
+}
 
 export interface GameStatusResponse {
   spinsLeft: number;
@@ -216,5 +240,44 @@ export interface AdminGroupLinksResponse {
     defaultLink: string;
     currentLink: string;
   }[];
+}
+
+export interface FlappyStartResponse {
+  success: boolean;
+  runId: string;
+  fee: number;
+  wallet: UserWallet;
+  message: string;
+}
+
+export interface FlappyGapResponse {
+  success: boolean;
+  gaps: number;
+  pot: number;
+  isRestZone1: boolean;
+  isRestZone2: boolean;
+  canCashout: boolean;
+  ballerGroupUnlocked?: boolean;
+  ballerInviteLink?: string;
+  wallet: UserWallet;
+  message: string;
+}
+
+export interface FlappyCashoutResponse {
+  success: boolean;
+  gaps: number;
+  amountCashedOut: number;
+  wallet: UserWallet;
+  ballerUnlocked?: boolean;
+  ballerInviteLink?: string;
+  transaction?: Transaction;
+  message: string;
+}
+
+export interface FlappyStats {
+  highScoreGaps: number;
+  totalEarnings: number;
+  totalRuns: number;
+  ballerUnlocked: boolean;
 }
 

@@ -16,6 +16,10 @@ import {
   CrossyJumpMilestone,
   CrossyStartResponse,
   AdminGroupLinksResponse,
+  FlappyStartResponse,
+  FlappyGapResponse,
+  FlappyCashoutResponse,
+  FlappyStats,
 } from "../types";
 
 async function parseResponse<T = any>(res: Response, fallbackError = "Request failed"): Promise<T> {
@@ -91,7 +95,13 @@ export const api = {
     return parseResponse<CheckoutSessionResponse>(res, "Failed to create checkout session");
   },
 
-  async verifySession(sessionId: string, telegramId: number, amount?: number, currency?: string, groupId?: string): Promise<{
+  async verifySession(
+    sessionId: string,
+    telegramId: number,
+    groupIdOrAmount?: string | number,
+    currency?: string,
+    groupId?: string
+  ): Promise<{
     success: boolean;
     wallet: UserWallet;
     transaction?: Transaction;
@@ -99,10 +109,11 @@ export const api = {
     message: string;
     alreadyCredited?: boolean;
   }> {
+    const targetGroupId = typeof groupIdOrAmount === "string" ? groupIdOrAmount : groupId;
     const res = await fetch("/api/stripe/verify-session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId, telegramId, amount, currency, groupId }),
+      body: JSON.stringify({ sessionId, telegramId, groupId: targetGroupId }),
     });
     return parseResponse(res, "Failed to verify payment session");
   },
@@ -204,5 +215,61 @@ export const api = {
       body: JSON.stringify({ telegramId, step, runId }),
     });
     return parseResponse<CrossyCashoutResponse>(res, "Failed to cash out");
+  },
+
+  async searchMusic(query: string): Promise<{ data: import("../types").DeezerTrack[]; total?: number }> {
+    const res = await fetch(`/api/deezer/search?q=${encodeURIComponent(query)}`);
+    return parseResponse<{ data: import("../types").DeezerTrack[]; total?: number }>(res, "Failed to search Deezer tracks");
+  },
+
+  async getTopMusicCharts(): Promise<{ data: import("../types").DeezerTrack[]; total?: number }> {
+    const res = await fetch("/api/deezer/chart");
+    return parseResponse<{ data: import("../types").DeezerTrack[]; total?: number }>(res, "Failed to load top chart tracks");
+  },
+
+  async resolveMusic(artist: string, title: string): Promise<{ success: boolean; videoId?: string; title?: string; duration?: number }> {
+    const res = await fetch(`/api/music/resolve?artist=${encodeURIComponent(artist)}&title=${encodeURIComponent(title)}`);
+    return parseResponse(res, "Failed to resolve full song stream");
+  },
+
+  async startFlappyBird(telegramId: number): Promise<FlappyStartResponse> {
+    const res = await fetch("/api/flappy-bird/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telegramId }),
+    });
+    return parseResponse<FlappyStartResponse>(res, "Failed to start Flappy Bird flight");
+  },
+
+  async flappyBirdGap(telegramId: number, gapNumber: number, runId: string): Promise<FlappyGapResponse> {
+    const res = await fetch("/api/flappy-bird/gap", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telegramId, gapNumber, runId }),
+    });
+    return parseResponse<FlappyGapResponse>(res, "Failed to record gap cleared");
+  },
+
+  async crashFlappyBird(telegramId: number, gaps: number, runId: string): Promise<{ success: boolean; message: string; wallet?: UserWallet }> {
+    const res = await fetch("/api/flappy-bird/crash", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telegramId, gaps, runId }),
+    });
+    return parseResponse(res, "Failed to record crash");
+  },
+
+  async cashoutFlappyBird(telegramId: number, gaps: number, runId: string): Promise<FlappyCashoutResponse> {
+    const res = await fetch("/api/flappy-bird/cashout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ telegramId, gaps, runId }),
+    });
+    return parseResponse<FlappyCashoutResponse>(res, "Failed to cash out Flappy Bird");
+  },
+
+  async getFlappyBirdStats(telegramId: number): Promise<{ success: boolean; stats: FlappyStats }> {
+    const res = await fetch(`/api/flappy-bird/stats?telegramId=${telegramId}`);
+    return parseResponse<{ success: boolean; stats: FlappyStats }>(res, "Failed to fetch Flappy Bird stats");
   }
 };

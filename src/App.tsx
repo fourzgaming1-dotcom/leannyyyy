@@ -5,7 +5,8 @@ import { useTelegram } from "./hooks/useTelegram";
 import { Header } from "./components/Header";
 import { DepositModal } from "./components/DepositModal";
 import { GroupStore } from "./components/GroupStore";
-import { TransactionList } from "./components/TransactionList";
+import { MusicSection } from "./components/MusicSection";
+import { MiniMusicPlayer } from "./components/MiniMusicPlayer";
 import { BalanceCard } from "./components/BalanceCard";
 import { BotSetupGuide } from "./components/BotSetupGuide";
 import { CelebrationToast } from "./components/CelebrationToast";
@@ -14,7 +15,9 @@ import { BottomNav } from "./components/BottomNav";
 import { HomeHub } from "./components/HomeHub";
 import { LuckyWheelGame } from "./components/LuckyWheelGame";
 import { CrossyRoadGame } from "./components/CrossyRoadGame";
+import { FlappyBirdGame } from "./components/FlappyBirdGame";
 import { AdminGroupLinksModal } from "./components/AdminGroupLinksModal";
+import { DeezerTrack } from "./types";
 import { Shield, Sparkles, ExternalLink, Copy, CheckCircle2, Zap, ArrowLeft } from "lucide-react";
 
 export default function App() {
@@ -29,7 +32,7 @@ export default function App() {
 
   // Navigation
   const [activeNavTab, setActiveNavTab] = useState<NavTab>("home");
-  const [activeGameSubTab, setActiveGameSubTab] = useState<"wheel" | "crossy">("wheel");
+  const [activeGameSubTab, setActiveGameSubTab] = useState<"flappy" | "wheel" | "crossy">("flappy");
   const [spinsLeft, setSpinsLeft] = useState<number>(3);
 
   // Modals & Toasts
@@ -50,6 +53,218 @@ export default function App() {
   } | null>(null);
 
   const eventSourceRef = useRef<EventSource | null>(null);
+
+  // Deezer / YouTube Full Song Music Player State
+  const [currentTrack, setCurrentTrack] = useState<DeezerTrack | null>(null);
+  const [isMusicPlaying, setIsMusicPlaying] = useState<boolean>(false);
+  const [musicCurrentTime, setMusicCurrentTime] = useState<number>(0);
+  const [musicDuration, setMusicDuration] = useState<number>(30);
+  const [isMusicMuted, setIsMusicMuted] = useState<boolean>(false);
+  const [isMusicLooping, setIsMusicLooping] = useState<boolean>(false);
+  const [musicVolume, setMusicVolume] = useState<number>(0.85);
+  const [musicPlaylist, setMusicPlaylist] = useState<DeezerTrack[]>([]);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const ytPlayerRef = useRef<any>(null);
+  const isFullSongActiveRef = useRef<boolean>(false);
+
+  // Music Player Handlers with Full Song Resolution
+  const handleSelectTrack = useCallback((track: DeezerTrack, playlistContext?: DeezerTrack[]) => {
+    setCurrentTrack(track);
+    if (playlistContext && playlistContext.length > 0) {
+      setMusicPlaylist(playlistContext);
+    }
+
+    if (track.duration && track.duration > 30) {
+      setMusicDuration(track.duration);
+    }
+
+    // 1. Play preview on HTML5 audio for immediate 0ms response
+    if (audioRef.current && track.preview) {
+      audioRef.current.src = track.preview;
+      audioRef.current.currentTime = 0;
+      audioRef.current
+        .play()
+        .then(() => setIsMusicPlaying(true))
+        .catch(console.warn);
+    }
+
+    // 2. Concurrently resolve full song from YouTube API so customer plays the ENTIRE song (no 30s limit!)
+    api.resolveMusic(track.artist?.name || "", track.title)
+      .then((res) => {
+        if (res.success && res.videoId && ytPlayerRef.current) {
+          try {
+            track.youtubeId = res.videoId;
+            track.isFullSong = true;
+            if (res.duration) setMusicDuration(res.duration);
+            // Switch over to full YouTube audio player!
+            if (audioRef.current) audioRef.current.pause();
+            ytPlayerRef.current.loadVideoById(res.videoId);
+            ytPlayerRef.current.playVideo();
+            isFullSongActiveRef.current = true;
+            setIsMusicPlaying(true);
+          } catch (e) {
+            console.warn("YouTube play switch error:", e);
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn("Full song resolve fallback:", err);
+      });
+  }, []);
+
+  const handleToggleMusicPlay = useCallback(() => {
+    if (!currentTrack) return;
+    if (isMusicPlaying) {
+      if (isFullSongActiveRef.current && ytPlayerRef.current) {
+        try { ytPlayerRef.current.pauseVideo(); } catch (e) {}
+      }
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      setIsMusicPlaying(false);
+    } else {
+      if (isFullSongActiveRef.current && ytPlayerRef.current) {
+        try { ytPlayerRef.current.playVideo(); } catch (e) {}
+      } else if (audioRef.current) {
+        audioRef.current.play().catch(console.warn);
+      }
+      setIsMusicPlaying(true);
+    }
+  }, [currentTrack, isMusicPlaying]);
+
+  const handleNextTrack = useCallback(() => {
+    if (musicPlaylist.length === 0 || !currentTrack) return;
+    const currentIndex = musicPlaylist.findIndex((t) => t.id === currentTrack.id);
+    const nextIndex = currentIndex >= 0 && currentIndex < musicPlaylist.length - 1 ? currentIndex + 1 : 0;
+    handleSelectTrack(musicPlaylist[nextIndex], musicPlaylist);
+  }, [musicPlaylist, currentTrack, handleSelectTrack]);
+
+  const handlePrevTrack = useCallback(() => {
+    if (musicPlaylist.length === 0 || !currentTrack) return;
+    const currentIndex = musicPlaylist.findIndex((t) => t.id === currentTrack.id);
+    const prevIndex = currentIndex > 0 ? currentIndex - 1 : musicPlaylist.length - 1;
+    handleSelectTrack(musicPlaylist[prevIndex], musicPlaylist);
+  }, [musicPlaylist, currentTrack, handleSelectTrack]);
+
+  const handleToggleMusicMute = useCallback(() => {
+    setIsMusicMuted((prev) => {
+      const next = !prev;
+      if (isFullSongActiveRef.current && ytPlayerRef.current) {
+        try {
+          if (next) ytPlayerRef.current.mute();
+          else ytPlayerRef.current.unMute();
+        } catch (e) {}
+      }
+      if (audioRef.current) {
+        audioRef.current.muted = next;
+      }
+      return next;
+    });
+  }, []);
+
+  const handleToggleMusicLoop = useCallback(() => {
+    setIsMusicLooping((prev) => {
+      const next = !prev;
+      if (audioRef.current) {
+        audioRef.current.loop = next;
+      }
+      return next;
+    });
+  }, []);
+
+  const handleMusicSeek = useCallback((seconds: number) => {
+    setMusicCurrentTime(seconds);
+    if (isFullSongActiveRef.current && ytPlayerRef.current) {
+      try {
+        ytPlayerRef.current.seekTo(seconds, true);
+      } catch (e) {}
+    }
+    if (audioRef.current) {
+      audioRef.current.currentTime = seconds;
+    }
+  }, []);
+
+  const handleMusicVolumeChange = useCallback((vol: number) => {
+    setMusicVolume(vol);
+    if (isFullSongActiveRef.current && ytPlayerRef.current) {
+      try {
+        ytPlayerRef.current.setVolume(vol * 100);
+      } catch (e) {}
+    }
+    if (audioRef.current) {
+      audioRef.current.volume = vol;
+    }
+  }, []);
+
+  // Sync YouTube player time and duration continuously
+  useEffect(() => {
+    const timer = setInterval(() => {
+      if (isMusicPlaying && isFullSongActiveRef.current && ytPlayerRef.current) {
+        try {
+          const cur = ytPlayerRef.current.getCurrentTime();
+          const dur = ytPlayerRef.current.getDuration();
+          if (typeof cur === "number" && !isNaN(cur)) {
+            setMusicCurrentTime(cur);
+          }
+          if (typeof dur === "number" && !isNaN(dur) && dur > 0) {
+            setMusicDuration(dur);
+          }
+        } catch (e) {}
+      }
+    }, 250);
+    return () => clearInterval(timer);
+  }, [isMusicPlaying]);
+
+  // Initialize YouTube IFrame Player
+  useEffect(() => {
+    const initYT = () => {
+      if (typeof window !== "undefined" && (window as any).YT && (window as any).YT.Player) {
+        try {
+          ytPlayerRef.current = new (window as any).YT.Player("yt-music-streamer", {
+            height: "1",
+            width: "1",
+            playerVars: {
+              autoplay: 1,
+              controls: 0,
+              playsinline: 1,
+            },
+            events: {
+              onStateChange: (event: any) => {
+                const YT = (window as any).YT;
+                if (!YT) return;
+                if (event.data === YT.PlayerState.PLAYING) {
+                  setIsMusicPlaying(true);
+                  isFullSongActiveRef.current = true;
+                  if (audioRef.current) audioRef.current.pause();
+                } else if (event.data === YT.PlayerState.PAUSED) {
+                  setIsMusicPlaying(false);
+                } else if (event.data === YT.PlayerState.ENDED) {
+                  if (isMusicLooping) {
+                    if (ytPlayerRef.current) {
+                      ytPlayerRef.current.seekTo(0);
+                      ytPlayerRef.current.playVideo();
+                    }
+                  } else {
+                    handleNextTrack();
+                  }
+                }
+              },
+            },
+          });
+        } catch (err) {
+          console.warn("YouTube player init error:", err);
+        }
+      }
+    };
+
+    if (typeof window !== "undefined") {
+      if ((window as any).YT && (window as any).YT.Player) {
+        initYT();
+      } else {
+        (window as any).onYouTubeIframeAPIReady = initYT;
+      }
+    }
+  }, [handleNextTrack, isMusicLooping]);
 
   // Load wallet data
   const loadWallet = useCallback(async () => {
@@ -193,27 +408,43 @@ export default function App() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const sessionId = urlParams.get("session_id");
-    const depositStatus = urlParams.get("deposit");
-    const unlockedGroupId = urlParams.get("unlocked_group");
+    const status = urlParams.get("status") || urlParams.get("deposit");
+    const unlockedGroupId = urlParams.get("unlocked_group") || urlParams.get("unlocked");
+    const urlTgId = urlParams.get("tg_id") || urlParams.get("telegramId");
+    const effectiveTgId = urlTgId ? parseInt(urlTgId, 10) : user.id;
 
-    if (sessionId && depositStatus === "success") {
-      api.verifySession(sessionId, user.id)
+    if (sessionId && (status === "success" || !status)) {
+      api.verifySession(sessionId, effectiveTgId, unlockedGroupId || undefined)
         .then((res) => {
           triggerHaptic("success");
+          if (res.wallet) {
+            setWallet(res.wallet);
+          }
           loadWallet();
           loadGroups();
 
-          if (res.unlockedGroup && res.unlockedGroup.inviteLink) {
+          const unlocked = res.unlockedGroup;
+          if (unlocked && unlocked.inviteLink) {
             setUnlockedGroupModal({
-              name: res.unlockedGroup.group?.name || res.unlockedGroup.groupId,
-              link: res.unlockedGroup.inviteLink,
-              id: res.unlockedGroup.groupId,
+              name: unlocked.group?.name || unlocked.name || "VIP Community",
+              link: unlocked.inviteLink,
+              id: unlocked.group?.id || unlocked.groupId || "vip",
             });
           } else if (unlockedGroupId) {
-            setCelebration({
-              amount: res.transaction?.amount || 0,
-              currency: res.transaction?.currency || "GBP",
-              txId: "🎉 Access Unlocked! Your invite link is ready.",
+            const grp = groups.find((g) => g.id === unlockedGroupId);
+            const fallbackLink =
+              unlockedGroupId === "all-groups"
+                ? "https://t.me/+-xdnbgG9fGEyNWE0"
+                : unlockedGroupId === "baller-bundle"
+                ? "https://t.me/addlist/r-kbWFRYsWBiMmJk"
+                : unlockedGroupId === "icloud-exclusives" || unlockedGroupId === "icloud"
+                ? "https://t.me/+Do2yEqwoUBhjMDI8"
+                : grp?.inviteLink || grp?.defaultLink || "https://t.me/+-xdnbgG9fGEyNWE0";
+
+            setUnlockedGroupModal({
+              name: grp?.name || unlockedGroupId.toUpperCase(),
+              link: fallbackLink,
+              id: unlockedGroupId,
             });
           } else if (res.transaction) {
             setCelebration({
@@ -229,7 +460,33 @@ export default function App() {
           window.history.replaceState({}, document.title, cleanUrl);
         });
     }
-  }, [user.id, triggerHaptic, loadGroups, loadWallet]);
+  }, [user.id, triggerHaptic, loadGroups, loadWallet, groups]);
+
+  // Auto-refresh wallet & purchases whenever user returns to the tab/app or periodically
+  useEffect(() => {
+    const handleReturnToApp = () => {
+      if (document.visibilityState === "visible") {
+        loadWallet();
+        loadGroups();
+      }
+    };
+    window.addEventListener("focus", handleReturnToApp);
+    document.addEventListener("visibilitychange", handleReturnToApp);
+
+    // 5-second interval poll for live updates
+    const pollInterval = setInterval(() => {
+      if (document.visibilityState === "visible") {
+        loadWallet();
+        loadGroups();
+      }
+    }, 5000);
+
+    return () => {
+      window.removeEventListener("focus", handleReturnToApp);
+      document.removeEventListener("visibilitychange", handleReturnToApp);
+      clearInterval(pollInterval);
+    };
+  }, [loadWallet, loadGroups]);
 
   // Initial load
   useEffect(() => {
@@ -238,7 +495,10 @@ export default function App() {
     loadGameStatus();
   }, [loadWallet, loadGroups, loadGameStatus]);
 
-  const handleDepositSuccess = (amount: number, currency: string, txId?: string) => {
+  const handleDepositSuccess = (amount: number, currency: string, txId?: string, updatedWallet?: UserWallet) => {
+    if (updatedWallet) {
+      setWallet(updatedWallet);
+    }
     refreshAll();
     setCelebration({ amount, currency, txId });
   };
@@ -311,6 +571,7 @@ export default function App() {
             <span className="text-xs font-black uppercase tracking-wider text-pink-300/80">
               {activeNavTab === "bundles" && "👑 VIP Bundles (Master Pass & 💎 Baller Bundle)"}
               {activeNavTab === "groups" && "⭐ Individual Groups (65 Communities)"}
+              {activeNavTab === "music" && "🎵 Deezer Music Search & Player"}
               {activeNavTab === "game" && (activeGameSubTab === "crossy" ? "🚗 VIP Crossy Road (£1/Go · Free Baller Group)" : "🎡 VIP Lucky Wheel (£1/Spin · Win £100)")}
               {activeNavTab === "wallet" && "💳 Wallet & Ledger"}
             </span>
@@ -510,7 +771,30 @@ export default function App() {
           </div>
         )}
 
-        {/* TAB 5: WALLET & STRIPE DEPOSITS */}
+        {/* TAB 4: DEEZER MUSIC SEARCH & STREAMING */}
+        {activeNavTab === "music" && (
+          <MusicSection
+            currentTrack={currentTrack}
+            isPlaying={isMusicPlaying}
+            currentTime={musicCurrentTime}
+            duration={musicDuration}
+            isMuted={isMusicMuted}
+            isLooping={isMusicLooping}
+            volume={musicVolume}
+            playlist={musicPlaylist}
+            onSelectTrack={handleSelectTrack}
+            onTogglePlay={handleToggleMusicPlay}
+            onPrevTrack={handlePrevTrack}
+            onNextTrack={handleNextTrack}
+            onToggleMute={handleToggleMusicMute}
+            onToggleLoop={handleToggleMusicLoop}
+            onSeek={handleMusicSeek}
+            onChangeVolume={handleMusicVolumeChange}
+            triggerHaptic={triggerHaptic}
+          />
+        )}
+
+        {/* TAB 5: WALLET & STRIPE DEPOSITS (Transaction history removed per user request) */}
         {activeNavTab === "wallet" && (
           <div className="space-y-4">
             <BalanceCard
@@ -524,14 +808,35 @@ export default function App() {
               }}
               onScrollToStore={() => setActiveNavTab("bundles")}
             />
-
-            <TransactionList
-              transactions={wallet?.transactions || []}
-              onOpenDeposit={() => setIsDepositModalOpen(true)}
-            />
           </div>
         )}
       </main>
+
+      {/* Floating Mini Deezer Music Player: persistent audio bar across the entire app */}
+      {currentTrack && activeNavTab !== "music" && (
+        <MiniMusicPlayer
+          currentTrack={currentTrack}
+          isPlaying={isMusicPlaying}
+          currentTime={musicCurrentTime}
+          duration={musicDuration}
+          isMuted={isMusicMuted}
+          onTogglePlay={handleToggleMusicPlay}
+          onNextTrack={handleNextTrack}
+          onToggleMute={handleToggleMusicMute}
+          onOpenMusicTab={() => {
+            triggerHaptic("light");
+            setActiveNavTab("music");
+          }}
+          onClosePlayer={() => {
+            if (audioRef.current) {
+              audioRef.current.pause();
+            }
+            setIsMusicPlaying(false);
+            setCurrentTrack(null);
+          }}
+          triggerHaptic={triggerHaptic}
+        />
+      )}
 
       {/* Modern Bottom Navigation Bar */}
       <BottomNav
@@ -540,6 +845,7 @@ export default function App() {
         triggerHaptic={triggerHaptic}
         balance={wallet?.balance || 0}
         spinsLeft={spinsLeft}
+        isMusicPlaying={isMusicPlaying}
       />
 
       {/* Deposit Modal */}
@@ -552,6 +858,34 @@ export default function App() {
         onDepositSuccess={handleDepositSuccess}
         openUrl={openUrl}
         triggerHaptic={triggerHaptic}
+      />
+
+      {/* Background HTML5 Audio Element for Deezer Previews & Full App Playback */}
+      <audio
+        ref={audioRef}
+        src={currentTrack?.preview || undefined}
+        onTimeUpdate={() => {
+          if (audioRef.current) {
+            setMusicCurrentTime(audioRef.current.currentTime);
+          }
+        }}
+        onLoadedMetadata={() => {
+          if (audioRef.current) {
+            setMusicDuration(audioRef.current.duration || 30);
+          }
+        }}
+        onEnded={() => {
+          if (isMusicLooping) {
+            if (audioRef.current) {
+              audioRef.current.currentTime = 0;
+              audioRef.current.play().catch(console.warn);
+            }
+          } else {
+            handleNextTrack();
+          }
+        }}
+        onPlay={() => setIsMusicPlaying(true)}
+        onPause={() => setIsMusicPlaying(false)}
       />
 
       {/* Instant VIP Access Unlocked Modal */}

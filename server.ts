@@ -75,6 +75,15 @@ export const DEFAULT_GROUPS: GroupConfig[] = [
     defaultLink: "https://t.me/addlist/r-kbWFRYsWBiMmJk",
   },
   {
+    id: "icloud-exclusives",
+    name: "iCloud Exclusives",
+    price: 20,
+    currency: "GBP",
+    description: "Exclusive iCloud private archive & premium exclusive media hub",
+    tag: "NEW",
+    defaultLink: "https://t.me/+Do2yEqwoUBhjMDI8",
+  },
+  {
     id: "ebony",
     name: "Ebony VIP",
     price: 10,
@@ -137,6 +146,7 @@ interface DBStore {
   processedSessions: Record<string, boolean>;
   groupLinks: Record<string, string>;
   userPurchases: Record<string, string[]>;
+  pendingDeliveries?: Record<string, Array<{ groupId: string; groupName: string; inviteLink: string; createdAt: string }>>;
   rouletteHistory?: Array<{ number: number; color: "red" | "black" | "green"; timestamp: string }>;
   crossyRuns?: Record<string, { [runId: string]: number[] }>;
   crossyCashedOutRuns?: Record<string, { [runId: string]: { step: number; amount: number; timestamp: string } }>;
@@ -144,6 +154,13 @@ interface DBStore {
     highScoreLane: number;
     totalEarnings: number;
     totalRuns: number;
+  }>;
+  flappyRuns?: Record<string, { [runId: string]: { gaps: number; status: "active" | "cashed_out" | "crashed"; amount: number } }>;
+  flappyStats?: Record<string, {
+    highScoreGaps: number;
+    totalEarnings: number;
+    totalRuns: number;
+    ballerUnlocked: boolean;
   }>;
   gameStats?: Record<string, {
     lastSpin: string;
@@ -228,32 +245,54 @@ const WHEEL_PRIZES: WheelPrizeDef[] = [
   { id: "credit_100", label: "£100 Credit", shortLabel: "£100.00", sub: "MEGA", type: "credit", amount: 100.00, color: "#eab308", weight: 1 },
 ];
 
+// Mandatory Telegram invite links as specified by app owner
+export const MANDATORY_GROUP_LINKS: Record<string, string> = {
+  "ebony": "https://t.me/+lQ2DnZj7KLoxNGFk",
+  "irish": "https://t.me/+8uct-Zt8z443Y2Fk",
+  "asian": "https://t.me/+mksHs4bdV3hmOWE0",
+  "scottish": "https://t.me/+viJcMgttgpI2NzNk",
+  "british": "https://t.me/+uV2_KyUDqZA0MTQ0",
+  "baller-group": "https://t.me/+PhngmOwUaZw4MmFk",
+  "all-groups": "https://t.me/+-xdnbgG9fGEyNWE0",
+  "baller-bundle": "https://t.me/addlist/r-kbWFRYsWBiMmJk",
+  "chav": "https://t.me/ChavVIPAccess",
+  "icloud-exclusives": "https://t.me/+Do2yEqwoUBhjMDI8",
+  "icloud": "https://t.me/+Do2yEqwoUBhjMDI8",
+};
+
 // Load store from disk or initialize
 function loadStore(): DBStore {
-  const initialLinks: Record<string, string> = {};
+  const initialLinks: Record<string, string> = { ...MANDATORY_GROUP_LINKS };
   for (const g of DEFAULT_GROUPS) {
-    initialLinks[g.id] = g.defaultLink;
+    initialLinks[g.id] = MANDATORY_GROUP_LINKS[g.id] || g.defaultLink;
   }
 
   try {
     if (fs.existsSync(STORE_PATH)) {
       const raw = fs.readFileSync(STORE_PATH, "utf-8");
       const parsed = JSON.parse(raw);
+      const mergedLinks = { ...initialLinks, ...(parsed.groupLinks || {}) };
+      // Always enforce the required user links
+      for (const [key, link] of Object.entries(MANDATORY_GROUP_LINKS)) {
+        mergedLinks[key] = link;
+      }
       return {
         wallets: parsed.wallets || {},
         processedSessions: parsed.processedSessions || {},
-        groupLinks: { ...initialLinks, ...(parsed.groupLinks || {}) },
+        groupLinks: mergedLinks,
         userPurchases: parsed.userPurchases || {},
         crossyRuns: parsed.crossyRuns || {},
         crossyCashedOutRuns: parsed.crossyCashedOutRuns || {},
         crossyStats: parsed.crossyStats || {},
+        flappyRuns: parsed.flappyRuns || {},
+        flappyStats: parsed.flappyStats || {},
         gameStats: parsed.gameStats || {},
       };
     }
   } catch (err) {
     console.error("Error reading store from disk, initializing new store:", err);
   }
-  return { wallets: {}, processedSessions: {}, groupLinks: initialLinks, userPurchases: {}, crossyRuns: {}, crossyCashedOutRuns: {}, crossyStats: {}, gameStats: {} };
+  return { wallets: {}, processedSessions: {}, groupLinks: initialLinks, userPurchases: {}, crossyRuns: {}, crossyCashedOutRuns: {}, crossyStats: {}, flappyRuns: {}, flappyStats: {}, gameStats: {} };
 }
 
 const db: DBStore = loadStore();
@@ -413,7 +452,7 @@ function debitWallet(
   return { wallet, transaction };
 }
 
-// Send automated Telegram message with the invite link directly to the buyer's Telegram chat
+// Send automated Telegram message with the invite link directly to the buyer's private Telegram chat ONLY
 async function sendTelegramInviteMessage(telegramId: number, group: GroupConfig, inviteLink: string) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   if (!token) {
@@ -421,14 +460,28 @@ async function sendTelegramInviteMessage(telegramId: number, group: GroupConfig,
     return;
   }
 
+  // CRITICAL SECURITY ENFORCEMENT:
+  // Must be a valid positive user ID. Never send to group chats, supergroups, channels, or invalid IDs!
+  if (!telegramId || isNaN(telegramId) || telegramId <= 0) {
+    console.warn(`⚠️ [Telegram Bot] Blocked sending invite: invalid or non-private chat ID (${telegramId})`);
+    return;
+  }
+
+  const cleanLink = inviteLink.trim();
+  if (!cleanLink.startsWith("http")) {
+    console.warn(`⚠️ [Telegram Bot] Invalid invite link format for ${group.name}: ${cleanLink}`);
+    return;
+  }
+
   const messageText =
     `🎉 <b>Payment Confirmed & Access Unlocked!</b>\n\n` +
     `You now have VIP access to <b>${group.name}</b>.\n\n` +
     `🔗 <b>Your Exclusive Invite Link:</b>\n` +
-    `${inviteLink}\n\n` +
-    `<i>Tap the button below to join the group immediately!</i>`;
+    `${cleanLink}\n\n` +
+    `<i>Tap the link above or the button below to join the private community immediately!</i>`;
 
   try {
+    console.log(`🚀 [Telegram Bot] Delivering invite link for ${group.name} strictly to buyer ID ${telegramId}`);
     const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -442,7 +495,7 @@ async function sendTelegramInviteMessage(telegramId: number, group: GroupConfig,
             [
               {
                 text: `🚀 Join ${group.name}`,
-                url: inviteLink,
+                url: cleanLink,
               },
             ],
           ],
@@ -451,19 +504,140 @@ async function sendTelegramInviteMessage(telegramId: number, group: GroupConfig,
     });
     const data: any = await res.json();
     if (data.ok) {
-      console.log(`✅ [Telegram Bot] Successfully delivered invite link to chat ${telegramId}`);
+      console.log(`✅ [Telegram Bot] Successfully delivered private invite link for ${group.name} ONLY to buyer ${telegramId}`);
     } else {
-      console.error(`⚠️ [Telegram Bot] sendMessage failed:`, data.description);
+      console.warn(`⚠️ [Telegram Bot] Button sendMessage failed (${data.description}), trying plain-text fallback...`);
+      // Fallback: send clean direct text without reply_markup
+      const fallbackRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: telegramId,
+          text: `🎉 Access Unlocked for ${group.name}!\n\nHere is your private Telegram invite link:\n${cleanLink}\n\nTap to join!`,
+          disable_web_page_preview: false,
+        }),
+      });
+      const fallbackData: any = await fallbackRes.json();
+      if (fallbackData.ok) {
+        console.log(`✅ [Telegram Bot] Delivered invite link via plain text fallback to chat ${telegramId}`);
+      } else {
+        console.error(`⚠️ [Telegram Bot] Plain-text fallback delivery failed:`, fallbackData.description);
+        // Save to pending deliveries so when user starts bot, it sends automatically
+        const key = String(telegramId);
+        if (!db.pendingDeliveries) db.pendingDeliveries = {};
+        if (!db.pendingDeliveries[key]) db.pendingDeliveries[key] = [];
+        db.pendingDeliveries[key].push({
+          groupId: group.id,
+          groupName: group.name,
+          inviteLink: cleanLink,
+          createdAt: new Date().toISOString(),
+        });
+        saveStore();
+      }
     }
   } catch (err: any) {
     console.error(`⚠️ [Telegram Bot] Error sending invite link to ${telegramId}:`, err.message);
   }
 }
 
-// Unlock group access for Telegram user
-function unlockGroup(telegramId: number, groupId: string): { success: boolean; group?: GroupConfig; inviteLink?: string } {
-  const normalizedGroupId = groupId === "desi" ? "asian" : groupId;
-  const group = DEFAULT_GROUPS.find((g) => g.id === normalizedGroupId || g.id === groupId);
+// Normalize raw product or group ID string to canonical ID
+export function normalizeGroupId(rawId?: string): string | null {
+  if (!rawId) return null;
+  const lower = rawId.toLowerCase().trim().replace(/_/g, "-").replace(/\s+/g, "-");
+
+  if (lower === "ebony") return "ebony";
+  if (lower === "irish") return "irish";
+  if (lower === "asian" || lower === "desi") return "asian";
+  if (lower === "scottish") return "scottish";
+  if (lower === "british") return "british";
+  if (lower === "chav") return "chav";
+  if (
+    lower === "icloud-exclusives" ||
+    lower === "icloudexclusives" ||
+    lower === "icloud" ||
+    lower === "icloud-exclusive" ||
+    lower === "icloudexclusive" ||
+    lower === "icloud_exclusives"
+  ) {
+    return "icloud-exclusives";
+  }
+  if (
+    lower === "baller-group" ||
+    lower === "ballergroup" ||
+    lower === "baller" ||
+    lower === "premium-group" ||
+    lower === "premium"
+  ) {
+    return "baller-group";
+  }
+  if (
+    lower === "all-groups" ||
+    lower === "allgroups" ||
+    lower === "all" ||
+    lower === "all-archive-groups" ||
+    lower === "all-archive" ||
+    lower === "all_archive_groups" ||
+    lower === "master"
+  ) {
+    return "all-groups";
+  }
+  if (
+    lower === "baller-bundle" ||
+    lower === "ballerbundle" ||
+    lower === "bundle"
+  ) {
+    return "baller-bundle";
+  }
+  return lower;
+}
+
+// Get the verified Telegram invite link for a group
+export function getGroupInviteLink(rawGroupId: string): string {
+  const norm = normalizeGroupId(rawGroupId) || rawGroupId;
+  const custom = (db.groupLinks[norm] || db.groupLinks[rawGroupId])?.trim();
+  if (custom && custom.startsWith("http")) return custom;
+  if (MANDATORY_GROUP_LINKS[norm]) return MANDATORY_GROUP_LINKS[norm];
+  const grp = DEFAULT_GROUPS.find((g) => g.id === norm || g.id === rawGroupId);
+  return grp?.defaultLink || "https://t.me/+-xdnbgG9fGEyNWE0";
+}
+
+// Send automated Telegram message confirming a wallet deposit
+async function sendTelegramDepositMessage(telegramId: number, amount: number, currency: string, newBalance: number) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  if (!token) return;
+  try {
+    const symbol = currency === "EUR" ? "€" : currency === "USD" ? "$" : "£";
+    const text =
+      `💰 <b>Deposit Confirmed!</b>\n\n` +
+      `Your deposit of <b>${symbol}${amount.toFixed(2)} ${currency}</b> has been received and credited to your balance!\n\n` +
+      `💼 <b>Current Wallet Balance:</b> ${symbol}${newBalance.toFixed(2)} GBP\n\n` +
+      `You can now use your balance to unlock exclusive VIP groups or play Lucky Wheel & Crossy Road!`;
+
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: telegramId,
+        text,
+        parse_mode: "HTML",
+      }),
+    });
+    console.log(`✅ [Telegram Bot] Deposit notification delivered to chat ${telegramId}`);
+  } catch (err: any) {
+    console.error(`⚠️ [Telegram Bot] Error sending deposit message to ${telegramId}:`, err.message);
+  }
+}
+
+// Unlock group access for Telegram user and send invite link
+function unlockGroup(telegramId: number, rawGroupId: string): { success: boolean; group?: GroupConfig; inviteLink?: string } {
+  // CRITICAL VALIDATION: Must be a genuine individual positive Telegram user ID
+  if (!telegramId || isNaN(telegramId) || telegramId <= 0) {
+    console.warn(`⚠️ [unlockGroup] Rejected invalid or non-private telegramId: ${telegramId}`);
+    return { success: false };
+  }
+
+  const normalizedGroupId = normalizeGroupId(rawGroupId) || rawGroupId;
+  const group = DEFAULT_GROUPS.find((g) => g.id === normalizedGroupId || g.id === rawGroupId);
   if (!group) return { success: false };
 
   const key = String(telegramId);
@@ -471,19 +645,26 @@ function unlockGroup(telegramId: number, groupId: string): { success: boolean; g
     db.userPurchases[key] = [];
   }
 
-  // If all-groups is purchased, unlock all groups
+  // If all-groups is purchased, unlock all groups for this user
   if (group.id === "all-groups") {
     for (const g of DEFAULT_GROUPS) {
       if (!db.userPurchases[key].includes(g.id)) {
         db.userPurchases[key].push(g.id);
       }
     }
+  } else if (group.id === "baller-bundle") {
+    if (!db.userPurchases[key].includes("baller-bundle")) {
+      db.userPurchases[key].push("baller-bundle");
+    }
+    if (!db.userPurchases[key].includes("baller-group")) {
+      db.userPurchases[key].push("baller-group");
+    }
   } else {
     if (!db.userPurchases[key].includes(group.id)) {
       db.userPurchases[key].push(group.id);
     }
-    if (groupId !== group.id && !db.userPurchases[key].includes(groupId)) {
-      db.userPurchases[key].push(groupId);
+    if (rawGroupId !== group.id && !db.userPurchases[key].includes(rawGroupId)) {
+      db.userPurchases[key].push(rawGroupId);
     }
   }
 
@@ -492,9 +673,9 @@ function unlockGroup(telegramId: number, groupId: string): { success: boolean; g
   wallet.updatedAt = new Date().toISOString();
   saveStore();
 
-  const customLink = (db.groupLinks[group.id] || db.groupLinks[groupId])?.trim();
-  const inviteLink = customLink && customLink.length > 0 ? customLink : group.defaultLink;
+  const inviteLink = getGroupInviteLink(group.id);
 
+  // Send SSE push strictly to this buyer's connected client
   broadcastToUser(telegramId, "GROUP_PURCHASED", {
     groupId: group.id,
     groupName: group.name,
@@ -502,12 +683,101 @@ function unlockGroup(telegramId: number, groupId: string): { success: boolean; g
     purchasedGroups: db.userPurchases[key],
   });
 
-  // Automatically send message to Telegram chat
+  // Automatically send message with link & button ONLY to this buyer's private Telegram chat
   sendTelegramInviteMessage(telegramId, group, inviteLink).catch((err) => {
     console.error("Failed sending Telegram invite message:", err);
   });
 
   return { success: true, group, inviteLink };
+}
+
+// Global auto-sync engine to scan Stripe for new completed deposits and purchases
+let isSyncingStripe = false;
+async function syncStripeSessions(): Promise<void> {
+  if (isSyncingStripe) return;
+  const stripe = getStripe();
+  if (!stripe) return;
+
+  try {
+    isSyncingStripe = true;
+    const now = Date.now();
+    // Scan recent sessions only (limit: 25)
+    const sessions = await stripe.checkout.sessions.list({ limit: 25 });
+
+    for (const session of sessions.data) {
+      // If already processed, skip immediately
+      if (db.processedSessions[session.id]) continue;
+
+      // Only process sessions paid within the last 30 minutes!
+      // This prevents old historical transactions from re-notifying past buyers.
+      const sessionAgeMs = session.created ? (now - session.created * 1000) : Infinity;
+      const isRecent = sessionAgeMs < 30 * 60 * 1000;
+
+      if (!isRecent || session.payment_status !== "paid") {
+        db.processedSessions[session.id] = true;
+        saveStore();
+        continue;
+      }
+
+      const rawTgId = session.metadata?.telegramId || session.metadata?.telegram_user_id || session.client_reference_id;
+      const metaId = rawTgId ? parseInt(rawTgId, 10) : null;
+      if (!metaId || isNaN(metaId) || metaId <= 0) {
+        // No valid Telegram ID; mark processed and skip
+        db.processedSessions[session.id] = true;
+        saveStore();
+        continue;
+      }
+
+      // Mark processed immediately to prevent race conditions across parallel sync calls
+      db.processedSessions[session.id] = true;
+      saveStore();
+
+      const amountTotal = session.amount_total ? session.amount_total / 100 : 0;
+      const currency = (session.currency || "gbp").toUpperCase();
+      const rawGroup = session.metadata?.groupId || session.metadata?.product;
+      const targetGroupId = normalizeGroupId(rawGroup);
+
+      const firstName = session.metadata?.firstName || session.customer_details?.name || "Telegram User";
+      const username = session.metadata?.username || "";
+      const wallet = getOrCreateWallet(metaId, firstName, username);
+
+      if (targetGroupId) {
+        console.log(`💳 [Stripe Sync] Unlocking ${targetGroupId} ONLY for buyer ID ${metaId}`);
+        const unlocked = unlockGroup(metaId, targetGroupId);
+        const purchaseTx: Transaction = {
+          id: `tx_stripe_${session.id}`,
+          telegramId: metaId,
+          type: "purchase",
+          amount: -amountTotal,
+          currency,
+          status: "completed",
+          description: `Stripe Direct Purchase: ${unlocked.group?.name || targetGroupId}`,
+          createdAt: new Date().toISOString(),
+          stripePaymentIntentId: typeof session.payment_intent === "string" ? session.payment_intent : undefined,
+        };
+        wallet.transactions.unshift(purchaseTx);
+        wallet.updatedAt = new Date().toISOString();
+        saveStore();
+        broadcastToUser(metaId, "TRANSACTION_CREATED", { transaction: purchaseTx, wallet });
+        broadcastToUser(metaId, "BALANCE_UPDATED", { wallet });
+      } else if (amountTotal > 0) {
+        console.log(`💰 [Stripe Sync] Crediting deposit of £${amountTotal} ONLY for buyer ID ${metaId}`);
+        const cred = creditWallet(
+          metaId,
+          amountTotal,
+          currency,
+          `Stripe Card / Apple Pay Deposit`,
+          session.id,
+          typeof session.payment_intent === "string" ? session.payment_intent : undefined
+        );
+        sendTelegramDepositMessage(metaId, amountTotal, currency, cred.wallet.balance).catch(console.error);
+      }
+    }
+  } catch (err: any) {
+    console.error("Error in syncStripeSessions:", err.message);
+  } finally {
+    isSyncingStripe = false;
+  }
 }
 
 async function startServer() {
@@ -557,9 +827,11 @@ async function startServer() {
         const currency = (session.currency || "gbp").toUpperCase();
         const groupId = session.metadata?.groupId;
 
-        if (telegramId && amountTotal > 0) {
+        if (telegramId && telegramId > 0 && amountTotal > 0) {
           if (groupId) {
-            console.log(`💳 Stripe Checkout Completed: Unlocking Group ${groupId} for user ${telegramId} (Direct Purchase - No Wallet Credit)`);
+            console.log(`💳 Stripe Checkout Completed: Unlocking Group ${groupId} strictly for user ${telegramId}`);
+            db.processedSessions[sessionId] = true;
+            saveStore();
             const unlocked = unlockGroup(telegramId, groupId);
             const wallet = getOrCreateWallet(telegramId);
             const purchaseTx: Transaction = {
@@ -575,12 +847,13 @@ async function startServer() {
             };
             wallet.transactions.unshift(purchaseTx);
             wallet.updatedAt = new Date().toISOString();
-            db.processedSessions[sessionId] = true;
             saveStore();
             broadcastToUser(telegramId, "TRANSACTION_CREATED", { transaction: purchaseTx, wallet });
             broadcastToUser(telegramId, "BALANCE_UPDATED", { wallet });
           } else {
-            console.log(`💳 Stripe Checkout Completed: Crediting deposit of $${amountTotal} ${currency} to Telegram user ${telegramId}`);
+            console.log(`💳 Stripe Checkout Completed: Crediting deposit of £${amountTotal} ${currency} strictly to user ${telegramId}`);
+            db.processedSessions[sessionId] = true;
+            saveStore();
             creditWallet(
               telegramId,
               amountTotal,
@@ -622,6 +895,108 @@ async function startServer() {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
+  // Deezer Music Search proxy
+  app.get("/api/deezer/search", async (req, res) => {
+    try {
+      const q = req.query.q as string;
+      if (!q || !q.trim()) {
+        res.json({ data: [] });
+        return;
+      }
+      const response = await fetch(`https://api.deezer.com/search?q=${encodeURIComponent(q.trim())}&limit=30`);
+      const data = await response.json();
+      res.json(data);
+    } catch (err: any) {
+      console.error("Deezer search proxy error:", err);
+      res.status(500).json({ error: "Failed to search music" });
+    }
+  });
+
+  // Deezer Top Chart Tracks proxy
+  app.get("/api/deezer/chart", async (_req, res) => {
+    try {
+      const response = await fetch("https://api.deezer.com/chart/0/tracks?limit=25");
+      const data = await response.json();
+      res.json(data);
+    } catch (err: any) {
+      console.error("Deezer chart proxy error:", err);
+      res.status(500).json({ error: "Failed to fetch music charts" });
+    }
+  });
+
+  // In-memory cache for resolved full song video IDs
+  const youtubeVideoIdCache: Record<string, { videoId: string; title: string; duration?: number }> = {};
+
+  // Music Full Song Resolver (Enables full 100% song streaming without 30s limit)
+  app.get("/api/music/resolve", async (req, res) => {
+    try {
+      const artist = ((req.query.artist as string) || "").trim();
+      const title = ((req.query.title as string) || "").trim();
+      const q = ((req.query.q as string) || `${artist} ${title}`).trim();
+
+      if (!q) {
+        res.status(400).json({ error: "Artist and title or search query required" });
+        return;
+      }
+
+      const cacheKey = q.toLowerCase();
+      if (youtubeVideoIdCache[cacheKey]) {
+        res.json({ success: true, ...youtubeVideoIdCache[cacheKey] });
+        return;
+      }
+
+      const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(q + " official audio")}`;
+      const ytRes = await fetch(searchUrl, {
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        },
+      });
+
+      const html = await ytRes.text();
+      let videoId: string | null = null;
+      let videoTitle: string = `${artist} - ${title}`;
+      let durationSec = 210;
+
+      const jsonMatch = html.match(/ytInitialData\s*=\s*({.+?});<\/script>/);
+      if (jsonMatch) {
+        try {
+          const parsed = JSON.parse(jsonMatch[1]);
+          const contents = parsed.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents;
+          const items = contents?.[0]?.itemSectionRenderer?.contents;
+          const video = items?.find((it: any) => it.videoRenderer)?.videoRenderer;
+          if (video && video.videoId) {
+            videoId = video.videoId;
+            videoTitle = video.title?.runs?.[0]?.text || videoTitle;
+            const simpleText = video.lengthText?.simpleText;
+            if (simpleText) {
+              const parts = simpleText.split(":").map(Number);
+              if (parts.length === 2) durationSec = parts[0] * 60 + parts[1];
+              else if (parts.length === 3) durationSec = parts[0] * 3600 + parts[1] * 60 + parts[2];
+            }
+          }
+        } catch (e) {}
+      }
+
+      if (!videoId) {
+        const regexMatch = html.match(/\/watch\?v=([a-zA-Z0-9_-]{11})/);
+        if (regexMatch) {
+          videoId = regexMatch[1];
+        }
+      }
+
+      if (videoId) {
+        const result = { videoId, title: videoTitle, duration: durationSec };
+        youtubeVideoIdCache[cacheKey] = result;
+        res.json({ success: true, ...result });
+      } else {
+        res.status(404).json({ error: "Could not find video for song" });
+      }
+    } catch (err: any) {
+      console.error("Music resolve error:", err);
+      res.status(500).json({ error: "Failed to resolve full song stream" });
+    }
+  });
+
   // Server configuration
   app.get("/api/config", (req, res) => {
     const stripeKey = process.env.STRIPE_SECRET_KEY || "";
@@ -657,7 +1032,21 @@ async function startServer() {
         return;
       }
 
+      // CRITICAL SECURITY CHECK:
+      // NEVER reply or send private VIP invite links into group chats, supergroups, or channels!
+      // The bot must only ever deliver access links in 1-on-1 private direct messages.
+      if (message.chat.type !== "private") {
+        console.log(`ℹ️ [Telegram Webhook] Ignored non-private message from chat ${message.chat.id} (${message.chat.type})`);
+        res.json({ ok: true });
+        return;
+      }
+
       const chatId = message.chat.id;
+      if (!chatId || isNaN(chatId) || chatId <= 0) {
+        res.json({ ok: true });
+        return;
+      }
+
       const text = (message.text || "").trim();
       const from = message.from || {};
       const firstName = from.first_name || "Member";
@@ -667,32 +1056,71 @@ async function startServer() {
       const wallet = getOrCreateWallet(chatId, firstName, username);
       const token = process.env.TELEGRAM_BOT_TOKEN;
 
-      if (token && text.startsWith("/")) {
-        let reply = "";
-        if (text.startsWith("/balance")) {
-          reply = `💰 <b>Account Balance:</b> £${wallet.balance.toFixed(2)} GBP\n\n` +
-            `Your funds are permanently saved and ready to spend!\n` +
-            `🎮 Hop across VIP Crossy Road to win up to £2.00, spin the Lucky Wheel, or purchase VIP Group access!`;
-        } else if (text.startsWith("/start")) {
-          reply = `👋 <b>Welcome, ${firstName}!</b>\n\n` +
-            `💰 <b>Your Current Balance:</b> £${wallet.balance.toFixed(2)} GBP\n\n` +
-            `🕹️ <b>Available in Mini App:</b>\n` +
-            `• 🚗 <b>VIP Crossy Road:</b> Hop traffic, cash out whenever you like after 3 hops to claim real wallet cash!\n` +
-            `• 🎡 <b>VIP Lucky Wheel:</b> Win cash prizes & VIP Group passes!\n` +
-            `• 👑 <b>9 VIP Telegram Communities</b> ready to unlock.\n\n` +
-            `<i>Your account balance is remembered permanently across all visits.</i>`;
+      if (token) {
+        const key = String(chatId);
+        const userPurchases = db.userPurchases[key] || [];
+
+        // Check if there are any pending deliveries for this user
+        if (db.pendingDeliveries && db.pendingDeliveries[key] && db.pendingDeliveries[key].length > 0) {
+          const pending = [...db.pendingDeliveries[key]];
+          db.pendingDeliveries[key] = [];
+          saveStore();
+
+          for (const item of pending) {
+            const grp = DEFAULT_GROUPS.find((g) => g.id === item.groupId);
+            if (grp) {
+              await sendTelegramInviteMessage(chatId, grp, item.inviteLink);
+            }
+          }
         }
 
-        if (reply) {
-          await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
+        if (text.startsWith("/")) {
+          let reply = "";
+          let keyboard: any[] = [];
+
+          if (text.startsWith("/links") || (text.startsWith("/start") && userPurchases.length > 0)) {
+            reply = `👑 <b>Your Unlocked VIP Groups & Links</b>\n\n`;
+            userPurchases.forEach((gid: string) => {
+              const grp = DEFAULT_GROUPS.find((g) => g.id === gid);
+              if (grp) {
+                const link = db.groupLinks[grp.id] || grp.defaultLink;
+                reply += `⭐ <b>${grp.name}</b>\n🔗 ${link}\n\n`;
+                keyboard.push([{ text: `🚀 Join ${grp.name}`, url: link }]);
+              }
+            });
+            reply += `💰 <b>Wallet Balance:</b> £${wallet.balance.toFixed(2)} GBP\n`;
+            reply += `<i>Tap above or use the buttons below to access your VIP groups!</i>`;
+          } else if (text.startsWith("/balance")) {
+            reply = `💰 <b>Account Balance:</b> £${wallet.balance.toFixed(2)} GBP\n\n` +
+              `Your funds are permanently saved and ready to spend!\n` +
+              `🎮 Hop across VIP Crossy Road to win real cash, spin the Lucky Wheel, or purchase VIP Group access!`;
+          } else if (text.startsWith("/start")) {
+            reply = `👋 <b>Welcome, ${firstName}!</b>\n\n` +
+              `💰 <b>Your Current Balance:</b> £${wallet.balance.toFixed(2)} GBP\n\n` +
+              `🕹️ <b>Available in Mini App:</b>\n` +
+              `• 🚗 <b>VIP Crossy Road:</b> Hop traffic, cash out whenever you like after 3 hops to claim real wallet cash!\n` +
+              `• 🎡 <b>VIP Lucky Wheel:</b> Win cash prizes & VIP Group passes!\n` +
+              `• 👑 <b>VIP Telegram Communities</b> ready to unlock with instant link delivery.\n\n` +
+              `<i>Type /links at any time to see your purchased group links!</i>`;
+          }
+
+          if (reply) {
+            const bodyPayload: any = {
               chat_id: chatId,
               text: reply,
               parse_mode: "HTML",
-            }),
-          });
+              disable_web_page_preview: false,
+            };
+            if (keyboard.length > 0) {
+              bodyPayload.reply_markup = { inline_keyboard: keyboard };
+            }
+
+            await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(bodyPayload),
+            }).catch((e) => console.error("Error sending bot command reply:", e));
+          }
         }
       }
 
@@ -727,8 +1155,8 @@ async function startServer() {
     });
   });
 
-  // Get user wallet
-  app.get("/api/user/:telegramId", (req, res) => {
+  // Get user wallet (with real-time Stripe auto-sync to ensure no deposit is ever missed)
+  app.get("/api/user/:telegramId", async (req, res) => {
     const telegramId = parseInt(req.params.telegramId, 10);
     if (!telegramId || isNaN(telegramId)) {
       res.status(400).json({ error: "Invalid Telegram ID" });
@@ -737,8 +1165,11 @@ async function startServer() {
 
     const firstName = (req.query.firstName as string) || "Telegram User";
     const username = (req.query.username as string) || "";
-    const wallet = getOrCreateWallet(telegramId, firstName, username);
 
+    // Sync any Stripe sessions first so balance & groups are 100% up to date
+    await syncStripeSessions();
+
+    const wallet = getOrCreateWallet(telegramId, firstName, username);
     res.json(wallet);
   });
 
@@ -800,14 +1231,16 @@ async function startServer() {
           },
         ],
         mode: "payment",
-        success_url: `${appUrl}/?session_id={CHECKOUT_SESSION_ID}&tg_id=${numericId}&status=success${groupId ? `&unlocked=${groupId}&unlocked_group=${groupId}` : ""}`,
+        success_url: `${appUrl}/?session_id={CHECKOUT_SESSION_ID}&tg_id=${numericId}&status=success&deposit=success${groupId ? `&unlocked=${groupId}&unlocked_group=${groupId}` : ""}`,
         cancel_url: `${appUrl}/?status=cancelled&tg_id=${numericId}`,
         metadata: {
           telegramId: String(numericId),
+          telegram_user_id: String(numericId),
           firstName: firstName || "",
           username: username || "",
           depositAmount: String(numericAmount),
           groupId: groupId || "",
+          product: groupId || "",
         },
       });
 
@@ -832,15 +1265,17 @@ async function startServer() {
         return;
       }
 
-      // Check if already processed (e.g. by Webhook)
+      // Sync Stripe to process any pending sessions
+      await syncStripeSessions();
+
+      // Check if already processed
       if (db.processedSessions[sessionId]) {
         const wallet = getOrCreateWallet(numericId);
         const targetGroupId = (req.body.groupId as string) || undefined;
         let unlockedGroup = null;
         if (targetGroupId) {
-          const group = DEFAULT_GROUPS.find((g) => g.id === targetGroupId);
-          const customLink = db.groupLinks[targetGroupId]?.trim();
-          const inviteLink = customLink && customLink.length > 0 ? customLink : group?.defaultLink;
+          const group = DEFAULT_GROUPS.find((g) => g.id === targetGroupId || g.id === normalizeGroupId(targetGroupId));
+          const inviteLink = getGroupInviteLink(targetGroupId);
           if (group && inviteLink) {
             unlockedGroup = { success: true, group, inviteLink };
           }
@@ -866,14 +1301,18 @@ async function startServer() {
       if (session.payment_status === "paid") {
         const amountTotal = session.amount_total ? session.amount_total / 100 : 0;
         const currency = (session.currency || "gbp").toUpperCase();
-        const metaId = session.metadata?.telegramId ? parseInt(session.metadata.telegramId, 10) : numericId;
-        const targetGroupId = (req.body.groupId as string) || session.metadata?.groupId;
+        const rawTgId = session.metadata?.telegramId || session.metadata?.telegram_user_id || session.client_reference_id;
+        const metaId = rawTgId ? parseInt(rawTgId, 10) : numericId;
+        const rawGroup = (req.body.groupId as string) || session.metadata?.groupId || session.metadata?.product;
+        const targetGroupId = normalizeGroupId(rawGroup);
 
         let unlockedGroup = null;
         let wallet = getOrCreateWallet(metaId);
         let transaction: Transaction;
 
         if (targetGroupId) {
+          db.processedSessions[sessionId] = true;
+          saveStore();
           unlockedGroup = unlockGroup(metaId, targetGroupId);
           transaction = {
             id: `tx_stripe_${sessionId}`,
@@ -888,7 +1327,6 @@ async function startServer() {
           };
           wallet.transactions.unshift(transaction);
           wallet.updatedAt = new Date().toISOString();
-          db.processedSessions[sessionId] = true;
           saveStore();
           broadcastToUser(metaId, "TRANSACTION_CREATED", { transaction, wallet });
           broadcastToUser(metaId, "BALANCE_UPDATED", { wallet });
@@ -903,6 +1341,7 @@ async function startServer() {
           );
           wallet = result.wallet;
           transaction = result.transaction;
+          sendTelegramDepositMessage(metaId, amountTotal, currency, wallet.balance).catch(console.error);
         }
 
         res.json({
@@ -928,7 +1367,8 @@ async function startServer() {
   });
 
   // Get all groups and user's purchase status
-  app.get("/api/groups", (req, res) => {
+  app.get("/api/groups", async (req, res) => {
+    await syncStripeSessions();
     const telegramIdStr = req.query.telegramId as string;
     const numericId = telegramIdStr ? parseInt(telegramIdStr, 10) : null;
     const key = numericId ? String(numericId) : "";
@@ -936,7 +1376,7 @@ async function startServer() {
 
     const groups = DEFAULT_GROUPS.map((g) => {
       const isPurchased = userPurchases.includes(g.id);
-      const inviteLink = isPurchased ? (db.groupLinks[g.id] || g.defaultLink) : undefined;
+      const inviteLink = isPurchased ? getGroupInviteLink(g.id) : undefined;
       return {
         id: g.id,
         name: g.name,
@@ -1336,6 +1776,269 @@ async function startServer() {
     } catch (err: any) {
       console.error("Crossy road cashout error:", err);
       res.status(500).json({ error: err.message || "Failed to cash out" });
+    }
+  });
+
+  // ==========================================
+  // VIP FLAPPY BIRD API ROUTES
+  // £1.00 Wager per go
+  // +10p per successful gap cleared
+  // Crash = lose £1 wager and all accrued earnings
+  // Rest Zone 1 at 10 gaps (cashout £1.00 break-even or risk & continue)
+  // Rest Zone 2 at 20 gaps (cashout £2.00 + Free Baller Group pass, and none after that)
+  // ==========================================
+
+  app.get("/api/flappy-bird/stats", (req, res) => {
+    try {
+      const telegramId = parseInt(req.query.telegramId as string, 10);
+      const userKey = String(telegramId || 0);
+      const stats = (db.flappyStats && db.flappyStats[userKey]) || {
+        highScoreGaps: 0,
+        totalEarnings: 0,
+        totalRuns: 0,
+        ballerUnlocked: false,
+      };
+      res.json({ success: true, stats });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/flappy-bird/start", (req, res) => {
+    try {
+      const { telegramId } = req.body;
+      const numericId = parseInt(telegramId, 10);
+      if (!numericId || isNaN(numericId)) {
+        res.status(400).json({ error: "Valid telegramId is required" });
+        return;
+      }
+
+      const wallet = getOrCreateWallet(numericId);
+      if (wallet.balance < 1.00) {
+        res.status(400).json({
+          error: "Insufficient balance (£1.00 required). Please top up your wallet via Stripe to fly!",
+          insufficientBalance: true,
+          balance: wallet.balance,
+        });
+        return;
+      }
+
+      const runId = `flappy_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      const debitRes = debitWallet(
+        numericId,
+        1.00,
+        "GBP",
+        "🎮 VIP Flappy Bird Wager (£1.00)",
+        "purchase"
+      );
+
+      const userKey = String(numericId);
+      if (!db.flappyRuns) db.flappyRuns = {};
+      if (!db.flappyRuns[userKey]) db.flappyRuns[userKey] = {};
+      db.flappyRuns[userKey][runId] = {
+        gaps: 0,
+        status: "active",
+        amount: 0,
+      };
+
+      if (!db.flappyStats) db.flappyStats = {};
+      if (!db.flappyStats[userKey]) {
+        db.flappyStats[userKey] = { highScoreGaps: 0, totalEarnings: 0, totalRuns: 0, ballerUnlocked: false };
+      }
+      db.flappyStats[userKey].totalRuns += 1;
+      saveStore();
+
+      res.json({
+        success: true,
+        runId,
+        fee: 1.00,
+        wallet: debitRes.wallet,
+        transaction: debitRes.transaction,
+        message: "Flight started for £1.00! Flap through gaps to build your pot.",
+      });
+    } catch (err: any) {
+      console.error("Flappy start error:", err);
+      res.status(500).json({ error: err.message || "Failed to start run" });
+    }
+  });
+
+  app.post("/api/flappy-bird/gap", (req, res) => {
+    try {
+      const { telegramId, runId, gapNumber } = req.body;
+      const numericId = parseInt(telegramId, 10);
+      const gap = parseInt(gapNumber, 10);
+      if (!numericId || !runId || isNaN(gap) || gap < 1 || gap > 20) {
+        res.status(400).json({ error: "Invalid parameters" });
+        return;
+      }
+
+      const userKey = String(numericId);
+      const run = db.flappyRuns?.[userKey]?.[runId];
+      if (!run || run.status !== "active") {
+        res.status(400).json({ error: "Run is not active" });
+        return;
+      }
+
+      run.gaps = gap;
+      const accruedPot = Math.round(gap * 0.10 * 100) / 100;
+      run.amount = accruedPot;
+
+      const isRestZone1 = gap === 10;
+      const isRestZone2 = gap === 20;
+
+      let ballerGroupUnlocked = false;
+      let ballerInviteLink = "";
+
+      if (gap >= 20) {
+        const userPasses = db.userPurchases[userKey] || [];
+        if (!userPasses.includes("baller-group")) {
+          const unlockRes = unlockGroup(numericId, "baller-group");
+          if (unlockRes.success) {
+            ballerGroupUnlocked = true;
+            ballerInviteLink = unlockRes.inviteLink || "";
+            const group = DEFAULT_GROUPS.find((g) => g.id === "baller-group");
+            if (group && ballerInviteLink) {
+              sendTelegramInviteMessage(numericId, group, ballerInviteLink).catch(console.error);
+            }
+          }
+        }
+        if (db.flappyStats?.[userKey]) {
+          db.flappyStats[userKey].ballerUnlocked = true;
+        }
+      }
+
+      if (db.flappyStats?.[userKey]) {
+        db.flappyStats[userKey].highScoreGaps = Math.max(db.flappyStats[userKey].highScoreGaps, gap);
+      }
+      saveStore();
+
+      const wallet = getOrCreateWallet(numericId);
+
+      res.json({
+        success: true,
+        gaps: gap,
+        pot: accruedPot,
+        isRestZone1,
+        isRestZone2,
+        canCashout: gap >= 10,
+        ballerGroupUnlocked,
+        ballerInviteLink,
+        wallet,
+        message: isRestZone2
+          ? "👑 20 GAPS CLEARED! Course Mastered! You won £2.00 & Free Baller Group!"
+          : isRestZone1
+          ? "🌿 Rest Zone 1 Reached! Cash out £1.00 or continue flying for £2.00 & Free Baller Pass!"
+          : `Gap #${gap} cleared! +10p added to pot (Current Pot: £${accruedPot.toFixed(2)})`,
+      });
+    } catch (err: any) {
+      console.error("Flappy gap error:", err);
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/flappy-bird/crash", (req, res) => {
+    try {
+      const { telegramId, runId, gaps } = req.body;
+      const numericId = parseInt(telegramId, 10);
+      const userKey = String(numericId);
+
+      if (db.flappyRuns?.[userKey]?.[runId]) {
+        db.flappyRuns[userKey][runId].status = "crashed";
+        db.flappyRuns[userKey][runId].amount = 0; // Accrued pot lost on crash
+        saveStore();
+      }
+
+      const wallet = getOrCreateWallet(numericId);
+      res.json({
+        success: true,
+        message: "Crashed! All pending earnings and the £1.00 wager were lost.",
+        wallet,
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  app.post("/api/flappy-bird/cashout", (req, res) => {
+    try {
+      const { telegramId, runId, gaps } = req.body;
+      const numericId = parseInt(telegramId, 10);
+      const numericGaps = parseInt(gaps, 10);
+
+      if (!numericId || !runId) {
+        res.status(400).json({ error: "Missing required parameters" });
+        return;
+      }
+
+      if (numericGaps < 10) {
+        res.status(400).json({ error: "Cashout is only available at Rest Zone 1 (10 gaps) or Rest Zone 2 (20 gaps)." });
+        return;
+      }
+
+      const userKey = String(numericId);
+      const run = db.flappyRuns?.[userKey]?.[runId];
+      if (run && run.status === "cashed_out") {
+        res.status(400).json({ error: "Run has already been cashed out" });
+        return;
+      }
+
+      // Calculate cashout: 10 gaps = £1.00, 20 gaps = £2.00
+      const cashoutAmount = numericGaps >= 20 ? 2.00 : 1.00;
+
+      if (run) {
+        run.status = "cashed_out";
+        run.amount = cashoutAmount;
+      }
+
+      const creditRes = creditWallet(
+        numericId,
+        cashoutAmount,
+        "GBP",
+        `🎮 VIP Flappy Bird Cashout: +£${cashoutAmount.toFixed(2)} (${numericGaps} Gaps Cleared)`,
+        `flappy_cashout_${runId}`
+      );
+
+      let ballerUnlocked = false;
+      let ballerInviteLink = "";
+      if (numericGaps >= 20) {
+        const userPasses = db.userPurchases[userKey] || [];
+        if (!userPasses.includes("baller-group")) {
+          const unlockRes = unlockGroup(numericId, "baller-group");
+          if (unlockRes.success) {
+            ballerUnlocked = true;
+            ballerInviteLink = unlockRes.inviteLink || "";
+          }
+        }
+      }
+
+      if (!db.flappyStats) db.flappyStats = {};
+      if (!db.flappyStats[userKey]) {
+        db.flappyStats[userKey] = { highScoreGaps: 0, totalEarnings: 0, totalRuns: 1, ballerUnlocked: false };
+      }
+      db.flappyStats[userKey].totalEarnings = Math.round((db.flappyStats[userKey].totalEarnings + cashoutAmount) * 100) / 100;
+      if (numericGaps >= 20) db.flappyStats[userKey].ballerUnlocked = true;
+      saveStore();
+
+      // SSE balance broadcast
+      broadcastToUser(numericId, "BALANCE_UPDATED", {
+        balance: creditRes.wallet.balance,
+        currency: creditRes.wallet.currency,
+        transaction: creditRes.transaction,
+      });
+
+      res.json({
+        success: true,
+        amountCashedOut: cashoutAmount,
+        gaps: numericGaps,
+        wallet: creditRes.wallet,
+        transaction: creditRes.transaction,
+        ballerUnlocked,
+        ballerInviteLink,
+        message: `Successfully cashed out £${cashoutAmount.toFixed(2)}! Credited to your wallet.`,
+      });
+    } catch (err: any) {
+      console.error("Flappy cashout error:", err);
+      res.status(500).json({ error: err.message });
     }
   });
 
@@ -1835,8 +2538,52 @@ async function startServer() {
     app.use(vite.middlewares);
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  app.listen(PORT, "0.0.0.0", async () => {
     console.log(`Telegram Stripe Wallet server running at http://0.0.0.0:${PORT}`);
+
+    // Pre-mark all past Stripe sessions as processed so historical buyers NEVER receive repeated notifications
+    const stripe = getStripe();
+    if (stripe) {
+      try {
+        const historical = await stripe.checkout.sessions.list({ limit: 100 });
+        let newlyMarked = 0;
+        for (const s of historical.data) {
+          if (!db.processedSessions[s.id]) {
+            db.processedSessions[s.id] = true;
+            newlyMarked++;
+          }
+        }
+        if (newlyMarked > 0) {
+          saveStore();
+          console.log(`✅ [Stripe Startup] Pre-marked ${newlyMarked} historical sessions as processed.`);
+        }
+      } catch (e: any) {
+        console.warn("Could not pre-fetch historical Stripe sessions:", e.message);
+      }
+    }
+
+    // Run continuous 4-second Stripe background sync for brand new incoming payments
+    setInterval(() => {
+      syncStripeSessions().catch((err) => console.error("Periodic Stripe sync error:", err));
+    }, 4000);
+
+    // Auto-register Telegram webhook if bot token and APP_URL are present
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    const appUrl = process.env.APP_URL;
+    if (botToken && appUrl && appUrl.startsWith("https://")) {
+      try {
+        const webhookUrl = `${appUrl}/api/telegram/webhook`;
+        const res = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook?url=${encodeURIComponent(webhookUrl)}`);
+        const data: any = await res.json();
+        if (data.ok) {
+          console.log(`✅ [Telegram Bot] Webhook successfully registered: ${webhookUrl}`);
+        } else {
+          console.warn(`⚠️ [Telegram Bot] setWebhook response:`, data.description);
+        }
+      } catch (err: any) {
+        console.warn(`⚠️ [Telegram Bot] Could not auto-register webhook:`, err.message);
+      }
+    }
   });
 }
 

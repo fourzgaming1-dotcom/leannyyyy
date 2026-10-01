@@ -66,6 +66,12 @@ declare global {
 // Fallback live profiles for browser preview
 export const DEMO_USERS: TelegramUser[] = [
   {
+    id: 8570354008,
+    first_name: "sxnti",
+    username: "imbashing",
+    is_premium: true,
+  },
+  {
     id: 100001,
     first_name: "VIP Member",
     username: "vip_member",
@@ -108,32 +114,111 @@ export function playSuccessChime() {
   }
 }
 
+// Resolve the active Telegram or visitor identity
+function resolveInitialUser(): TelegramUser {
+  if (typeof window === "undefined") {
+    return {
+      id: 100001,
+      first_name: "VIP Member",
+      username: "",
+      is_premium: false,
+    };
+  }
+
+  // 1. Direct WebApp user object from Telegram client
+  const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+  if (tgUser && tgUser.id) {
+    return tgUser;
+  }
+
+  // 2. Parse initData query string if present
+  try {
+    const rawInitData = window.Telegram?.WebApp?.initData;
+    if (rawInitData) {
+      const searchParams = new URLSearchParams(rawInitData);
+      const userStr = searchParams.get("user");
+      if (userStr) {
+        const parsed = JSON.parse(userStr);
+        if (parsed && parsed.id) return parsed;
+      }
+    }
+  } catch (e) {}
+
+  // 3. Parse URL hash (Telegram WebApp often loads with #tgWebAppData=...)
+  try {
+    const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : window.location.hash;
+    if (hash) {
+      const hashParams = new URLSearchParams(hash);
+      const tgWebAppData = hashParams.get("tgWebAppData") || hash;
+      const innerParams = new URLSearchParams(tgWebAppData);
+      const userStr = innerParams.get("user");
+      if (userStr) {
+        const parsed = JSON.parse(userStr);
+        if (parsed && parsed.id) return parsed;
+      }
+    }
+  } catch (e) {}
+
+  // 4. URL query parameters (e.g. ?tg_id=... from return redirect)
+  const urlParams = new URLSearchParams(window.location.search);
+  const urlTgId = urlParams.get("tg_id") || urlParams.get("telegramId");
+  if (urlTgId) {
+    const idNum = parseInt(urlTgId, 10);
+    if (idNum && !isNaN(idNum) && idNum > 0) {
+      const matchDemo = DEMO_USERS.find((u) => u.id === idNum);
+      if (matchDemo) return matchDemo;
+      const firstName = urlParams.get("first_name") || `Member ${idNum.toString().slice(-4)}`;
+      const username = urlParams.get("username") || "";
+      return {
+        id: idNum,
+        first_name: firstName,
+        username,
+        is_premium: true,
+      };
+    }
+  }
+
+  // 5. User explicitly selected in demo account switcher
+  const savedUser = localStorage.getItem("tma_active_demo_user");
+  if (savedUser) {
+    try {
+      const parsed = JSON.parse(savedUser);
+      if (parsed && parsed.id) {
+        return parsed;
+      }
+    } catch {}
+  }
+
+  // 6. Each separate browser visitor gets their OWN persistent unique guest ID
+  // NEVER default everyone to sxnti (8570354008) so users never cross-share wallets or links!
+  const guestSaved = localStorage.getItem("tma_unique_guest_user");
+  if (guestSaved) {
+    try {
+      const parsed = JSON.parse(guestSaved);
+      if (parsed && parsed.id) return parsed;
+    } catch {}
+  }
+
+  const generatedId = Math.floor(100000000 + Math.random() * 899999999);
+  const newGuest: TelegramUser = {
+    id: generatedId,
+    first_name: `Member ${generatedId.toString().slice(-4)}`,
+    username: "",
+    is_premium: false,
+  };
+  localStorage.setItem("tma_unique_guest_user", JSON.stringify(newGuest));
+  return newGuest;
+}
+
 export function useTelegram() {
   const [isTelegram, setIsTelegram] = useState<boolean>(() => {
     if (typeof window !== "undefined") {
-      return Boolean(window.Telegram?.WebApp?.initDataUnsafe?.user);
+      return Boolean(window.Telegram?.WebApp?.initDataUnsafe?.user?.id);
     }
     return false;
   });
 
-  const [currentUser, setCurrentUser] = useState<TelegramUser>(() => {
-    if (typeof window !== "undefined") {
-      const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
-      if (tgUser && tgUser.id) {
-        return tgUser;
-      }
-      const savedUser = localStorage.getItem("tma_active_demo_user");
-      if (savedUser) {
-        try {
-          const parsed = JSON.parse(savedUser);
-          if (parsed && parsed.id && parsed.id !== 84920194 && parsed.id !== 987654321) {
-            return parsed;
-          }
-        } catch {}
-      }
-    }
-    return DEMO_USERS[0];
-  });
+  const [currentUser, setCurrentUser] = useState<TelegramUser>(resolveInitialUser);
 
   const [colorScheme, setColorScheme] = useState<"light" | "dark">(() => {
     if (typeof window !== "undefined" && window.Telegram?.WebApp?.colorScheme) {
@@ -144,38 +229,43 @@ export function useTelegram() {
 
   useEffect(() => {
     const tg = window.Telegram?.WebApp;
-    if (tg && tg.initDataUnsafe?.user) {
-      setIsTelegram(true);
-      setCurrentUser(tg.initDataUnsafe.user);
-      if (tg.colorScheme) {
-        setColorScheme(tg.colorScheme);
-      }
+    if (tg) {
       try {
         tg.ready();
         tg.expand();
       } catch (err) {
         console.warn("Telegram WebApp initialization warning:", err);
       }
-    } else {
-      setIsTelegram(false);
-      // Retrieve saved user from localStorage if present and valid
-      const savedUser = localStorage.getItem("tma_active_demo_user");
-      if (savedUser) {
-        try {
-          const parsed = JSON.parse(savedUser);
-          if (parsed && parsed.id && parsed.id !== 84920194 && parsed.id !== 987654321) {
-            setCurrentUser(parsed);
-          } else {
-            setCurrentUser(DEMO_USERS[0]);
-            localStorage.removeItem("tma_active_demo_user");
-          }
-        } catch {
-          setCurrentUser(DEMO_USERS[0]);
+
+      // Check if user is now available via Telegram SDK
+      if (tg.initDataUnsafe?.user?.id) {
+        setIsTelegram(true);
+        setCurrentUser(tg.initDataUnsafe.user);
+        if (tg.colorScheme) {
+          setColorScheme(tg.colorScheme);
         }
-      } else {
-        setCurrentUser(DEMO_USERS[0]);
+        return;
+      }
+
+      // Fallback check if initData is parseable
+      if (tg.initData) {
+        try {
+          const searchParams = new URLSearchParams(tg.initData);
+          const userStr = searchParams.get("user");
+          if (userStr) {
+            const parsed = JSON.parse(userStr);
+            if (parsed && parsed.id) {
+              setIsTelegram(true);
+              setCurrentUser(parsed);
+              return;
+            }
+          }
+        } catch {}
       }
     }
+
+    // Outside Telegram WebApp: keep unique individual visitor ID
+    setIsTelegram(false);
   }, []);
 
   const switchDemoUser = useCallback((user: TelegramUser) => {

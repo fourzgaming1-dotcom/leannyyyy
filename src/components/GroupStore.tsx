@@ -95,6 +95,33 @@ export const GroupStore: React.FC<GroupStoreProps> = ({
       if (res.checkoutUrl) {
         triggerHaptic("light");
         openUrl(res.checkoutUrl);
+
+        // Start background polling for this group purchase session
+        if (res.sessionId) {
+          const pollSessionId = res.sessionId;
+          let attempts = 0;
+          const pollInterval = setInterval(async () => {
+            attempts++;
+            if (attempts > 60) {
+              clearInterval(pollInterval);
+              return;
+            }
+            try {
+              const verifyRes = await api.verifySession(pollSessionId, telegramId, group.id);
+              if (verifyRes && verifyRes.success) {
+                clearInterval(pollInterval);
+                triggerHaptic("success");
+                setSuccessModalGroup({
+                  group: verifyRes.unlockedGroup?.group || group,
+                  link: verifyRes.unlockedGroup?.inviteLink || group.defaultLink,
+                });
+                onRefresh();
+              }
+            } catch {
+              // still pending on Stripe
+            }
+          }, 2500);
+        }
       }
     } catch (err: any) {
       console.error("Stripe group checkout error:", err);

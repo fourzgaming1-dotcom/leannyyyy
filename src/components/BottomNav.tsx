@@ -1,5 +1,5 @@
 import React from "react";
-import { Home, Crown, Layers, Sparkles, Wallet } from "lucide-react";
+import { Home, Layers, Sparkles, Wallet, Music2 } from "lucide-react";
 import { NavTab } from "../types";
 
 interface BottomNavProps {
@@ -8,6 +8,7 @@ interface BottomNavProps {
   triggerHaptic: (type: "light" | "medium" | "heavy" | "success" | "warning" | "error") => void;
   balance: number;
   spinsLeft?: number;
+  isMusicPlaying?: boolean;
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({
@@ -16,6 +17,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   triggerHaptic,
   balance,
   spinsLeft = 3,
+  isMusicPlaying = false,
 }) => {
   const tabs = [
     {
@@ -24,22 +26,22 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       icon: Home,
     },
     {
-      id: "bundles" as NavTab,
-      label: "VIP Bundles",
-      icon: Crown,
-      badge: "SAVE",
-    },
-    {
       id: "groups" as NavTab,
-      label: "All Groups",
+      label: "VIP Groups",
       icon: Layers,
     },
     {
+      id: "music" as NavTab,
+      label: "Music",
+      icon: Music2,
+      badge: isMusicPlaying ? "LIVE" : undefined,
+      highlight: isMusicPlaying,
+    },
+    {
       id: "game" as NavTab,
-      label: "VIP Games",
+      label: "Games",
       icon: Sparkles,
-      badge: "WIN CASH",
-      highlight: true,
+      badge: "WIN",
     },
     {
       id: "wallet" as NavTab,

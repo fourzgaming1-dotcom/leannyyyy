@@ -257,6 +257,36 @@ export function getGroupTheme(groupId: string): GroupTheme {
         ),
       };
 
+    case "icloud-exclusives":
+    case "icloud":
+      return {
+        id: "icloud-exclusives",
+        flag: "☁️",
+        countryName: "iCloud Exclusives",
+        badgeLabel: "☁️ ICLOUD EXCLUSIVES · VIP VAULT",
+        gradient: "from-[#1b0836] via-[#2d0e57] to-[#0e031f]",
+        cardBg: "bg-gradient-to-r from-[#17062e] via-[#280c4e] to-[#0c021b]",
+        borderColor: "border-purple-400",
+        shadowColor: "shadow-[0_0_35px_rgba(168,85,247,0.35)]",
+        accentBadgeBg: "bg-gradient-to-r from-purple-500 via-fuchsia-500 to-indigo-500 text-white font-black",
+        accentTextColor: "text-purple-300",
+        priceBg: "bg-purple-950/90 border border-purple-400/60 text-purple-300",
+        buttonBg: "bg-gradient-to-r from-purple-500 via-fuchsia-500 to-indigo-500 hover:from-purple-400 hover:to-fuchsia-400 text-white shadow-[0_0_25px_rgba(168,85,247,0.5)]",
+        icon: <Sparkles className="w-5 h-5 text-purple-300" />,
+        ambientLight: "bg-purple-400/25",
+        category: "highroller",
+        perks: ["Private iCloud Vault & Archives", "Exclusive Media Feeds & Leaks", "Instant Telegram Access"],
+        overlayPattern: (
+          <div className="absolute inset-0 pointer-events-none opacity-35 overflow-hidden">
+            <div className="absolute top-0 right-0 w-44 h-44 bg-purple-500/25 rounded-full blur-3xl" />
+            <div className="absolute top-2 right-4 text-purple-400/20 text-7xl select-none font-black">
+              ☁️
+            </div>
+            <div className="absolute inset-0 bg-[radial-gradient(#c084fc_1.3px,transparent_1.3px)] [background-size:16px_16px] opacity-25" />
+          </div>
+        ),
+      };
+
     case "baller-group":
     default:
       return {

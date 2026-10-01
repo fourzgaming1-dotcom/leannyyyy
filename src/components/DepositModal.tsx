@@ -9,7 +9,7 @@ interface DepositModalProps {
   user: TelegramUser;
   config: ServerConfig | null;
   initialAmount?: number;
-  onDepositSuccess: (amount: number, currency: string, txId?: string) => void;
+  onDepositSuccess: (amount: number, currency: string, txId?: string, updatedWallet?: any) => void;
   openUrl: (url: string) => void;
   triggerHaptic: (type: "light" | "medium" | "heavy" | "success" | "warning" | "error") => void;
 }
@@ -40,11 +40,43 @@ export const DepositModal: React.FC<DepositModalProps> = ({
   const [isProcessingStripe, setIsProcessingStripe] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
-
-  if (!isOpen) return null;
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [isPollingPayment, setIsPollingPayment] = useState<boolean>(false);
+  const [isPaymentSuccess, setIsPaymentSuccess] = useState<boolean>(false);
+  const [isVerifyingNow, setIsVerifyingNow] = useState<boolean>(false);
 
   const activeAmount = customAmount ? parseFloat(customAmount) || 0 : selectedAmount;
   const currencySymbol = selectedCurrency === "EUR" ? "€" : selectedCurrency === "USD" ? "$" : "£";
+
+  // Poll for payment completion when checkout session is open
+  React.useEffect(() => {
+    if (!activeSessionId || !isPollingPayment || isPaymentSuccess) return;
+
+    let isMounted = true;
+    const interval = setInterval(async () => {
+      try {
+        const res = await api.verifySession(activeSessionId, user.id);
+        if (res && res.success && isMounted) {
+          setIsPaymentSuccess(true);
+          setIsPollingPayment(false);
+          triggerHaptic("success");
+          onDepositSuccess(activeAmount, selectedCurrency, res.transaction?.id, res.wallet);
+          setTimeout(() => {
+            if (isMounted) onClose();
+          }, 2000);
+        }
+      } catch {
+        // Still pending payment on Stripe; keep polling
+      }
+    }, 1800);
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [activeSessionId, isPollingPayment, isPaymentSuccess, user.id, activeAmount, selectedCurrency, onDepositSuccess, onClose, triggerHaptic]);
+
+  if (!isOpen) return null;
 
   const handleSelectPreset = (amt: number) => {
     triggerHaptic("light");
@@ -52,6 +84,9 @@ export const DepositModal: React.FC<DepositModalProps> = ({
     setCustomAmount("");
     setErrorMessage(null);
     setCheckoutUrl(null);
+    setActiveSessionId(null);
+    setIsPollingPayment(false);
+    setIsPaymentSuccess(false);
   };
 
   const handleCustomChange = (val: string) => {
@@ -60,6 +95,34 @@ export const DepositModal: React.FC<DepositModalProps> = ({
       setSelectedAmount(0);
       setErrorMessage(null);
       setCheckoutUrl(null);
+      setActiveSessionId(null);
+      setIsPollingPayment(false);
+      setIsPaymentSuccess(false);
+    }
+  };
+
+  const handleManualVerify = async () => {
+    if (!activeSessionId) return;
+    try {
+      setIsVerifyingNow(true);
+      setErrorMessage(null);
+      triggerHaptic("medium");
+      const res = await api.verifySession(activeSessionId, user.id);
+      if (res && res.success) {
+        setIsPaymentSuccess(true);
+        setIsPollingPayment(false);
+        triggerHaptic("success");
+        onDepositSuccess(activeAmount, selectedCurrency, res.transaction?.id, res.wallet);
+        setTimeout(() => {
+          onClose();
+        }, 1800);
+      } else {
+        setErrorMessage("Payment has not been completed on Stripe yet. Please finish payment and try again.");
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || "Payment is still processing on Stripe. Please wait a few seconds and try again.");
+    } finally {
+      setIsVerifyingNow(false);
     }
   };
 
@@ -73,6 +136,7 @@ export const DepositModal: React.FC<DepositModalProps> = ({
     try {
       setIsProcessingStripe(true);
       setErrorMessage(null);
+      setIsPaymentSuccess(false);
       triggerHaptic("medium");
 
       const res = await api.createCheckoutSession({
@@ -83,8 +147,10 @@ export const DepositModal: React.FC<DepositModalProps> = ({
         username: user.username,
       });
 
-      if (res.checkoutUrl) {
+      if (res.checkoutUrl && res.sessionId) {
         setCheckoutUrl(res.checkoutUrl);
+        setActiveSessionId(res.sessionId);
+        setIsPollingPayment(true);
         triggerHaptic("light");
         openUrl(res.checkoutUrl);
       } else {
@@ -240,51 +306,94 @@ export const DepositModal: React.FC<DepositModalProps> = ({
 
         {/* Action Buttons */}
         <div className="space-y-2.5 pt-3 border-t border-pink-500/20 relative z-10">
-          {checkoutUrl && (
-            <div className="p-3.5 rounded-2xl bg-emerald-950/70 border border-emerald-500/40 text-center space-y-2 animate-in fade-in duration-200 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
-              <div className="flex items-center justify-center gap-1.5 text-xs text-emerald-300 font-bold">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Stripe Session Ready ({currencySymbol}{activeAmount.toFixed(2)})</span>
+          {isPaymentSuccess ? (
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950 via-teal-950 to-emerald-900 border-2 border-emerald-400 text-center space-y-2 animate-in zoom-in-95 duration-200 shadow-[0_0_35px_rgba(16,185,129,0.5)]">
+              <div className="w-12 h-12 mx-auto rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-emerald-300 shadow-[0_0_15px_rgba(16,185,129,0.6)]">
+                <Sparkles className="w-6 h-6 animate-spin text-emerald-300" />
               </div>
-              <a
-                id="btn-open-stripe-tab"
-                href={checkoutUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => triggerHaptic("light")}
-                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-black text-xs shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all cursor-pointer"
-              >
-                <ExternalLink className="w-4 h-4" />
-                <span>Open Stripe Checkout Tab ↗</span>
-              </a>
-              <p className="text-[10px] text-emerald-300/70">
-                Tap above if your browser blocked the automatic payment window
+              <h3 className="text-base font-black text-white">
+                DEPOSIT CONFIRMED!
+              </h3>
+              <p className="text-2xl font-mono font-black text-emerald-300">
+                +{currencySymbol}{activeAmount.toFixed(2)} {selectedCurrency}
+              </p>
+              <p className="text-xs text-emerald-200/90 font-medium">
+                Funds are credited to your balance and ready to use immediately!
               </p>
             </div>
-          )}
+          ) : (
+            <>
+              {checkoutUrl && (
+                <div className="p-3.5 rounded-2xl bg-emerald-950/70 border border-emerald-500/40 text-center space-y-2 animate-in fade-in duration-200 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
+                  <div className="flex items-center justify-center gap-1.5 text-xs text-emerald-300 font-bold">
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>Stripe Checkout Window Ready</span>
+                  </div>
+                  <a
+                    id="btn-open-stripe-tab"
+                    href={checkoutUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => triggerHaptic("light")}
+                    className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-black text-xs shadow-[0_0_20px_rgba(16,185,129,0.4)] transition-all cursor-pointer"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    <span>Open Stripe Payment Tab ↗</span>
+                  </a>
 
-          {/* Main Stripe Button */}
-          <button
-            id="btn-stripe-checkout-confirm"
-            type="button"
-            disabled={isProcessingStripe || activeAmount < 1}
-            onClick={handleStripeCheckout}
-            className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-gradient-to-r from-pink-500 via-rose-500 to-fuchsia-600 hover:from-pink-400 hover:via-rose-400 hover:to-fuchsia-500 disabled:opacity-50 text-white font-extrabold text-sm shadow-[0_0_25px_rgba(255,46,147,0.4)] active:scale-[0.98] transition-all cursor-pointer"
-          >
-            {isProcessingStripe ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin text-white" />
-                <span>Connecting to Stripe Checkout...</span>
-              </>
-            ) : (
-              <>
-                <CreditCard className="w-4 h-4 text-white drop-shadow-[0_0_4px_rgba(255,255,255,0.8)]" />
-                <span>
-                  Proceed to Stripe Payment ({currencySymbol}{activeAmount.toFixed(2)})
-                </span>
-              </>
-            )}
-          </button>
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      disabled={isVerifyingNow}
+                      onClick={handleManualVerify}
+                      className="w-full py-2.5 px-3 rounded-xl bg-black/80 hover:bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 text-xs font-extrabold flex items-center justify-center gap-2 transition-all cursor-pointer"
+                    >
+                      {isVerifyingNow ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Verifying with Stripe...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                          <span>I've Paid — Check & Credit Balance Now</span>
+                        </>
+                      )}
+                    </button>
+                    {isPollingPayment && (
+                      <p className="text-[10px] text-emerald-300/70 mt-1.5 flex items-center justify-center gap-1 animate-pulse">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                        Listening for Stripe confirmation in real-time...
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Main Stripe Button */}
+              <button
+                id="btn-stripe-checkout-confirm"
+                type="button"
+                disabled={isProcessingStripe || activeAmount < 1}
+                onClick={handleStripeCheckout}
+                className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-gradient-to-r from-pink-500 via-rose-500 to-fuchsia-600 hover:from-pink-400 hover:via-rose-400 hover:to-fuchsia-500 disabled:opacity-50 text-white font-extrabold text-sm shadow-[0_0_25px_rgba(255,46,147,0.4)] active:scale-[0.98] transition-all cursor-pointer"
+              >
+                {isProcessingStripe ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    <span>Connecting to Stripe Checkout...</span>
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="w-4 h-4 text-white drop-shadow-[0_0_4px_rgba(255,255,255,0.8)]" />
+                    <span>
+                      {checkoutUrl ? "Re-open" : "Proceed to"} Stripe Payment ({currencySymbol}{activeAmount.toFixed(2)})
+                    </span>
+                  </>
+                )}
+              </button>
+            </>
+          )}
 
           <p className="text-center text-[11px] text-pink-300/60 pt-1 flex items-center justify-center gap-1.5">
             <Shield className="w-3.5 h-3.5 text-pink-400" />
